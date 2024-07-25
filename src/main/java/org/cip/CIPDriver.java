@@ -9,11 +9,11 @@ import java.util.Properties;
  * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote database with
  * PostgreSQL dialect enabled.
  */
-public class Driver extends org.apache.calcite.avatica.remote.Driver {
+public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
     // Static initializer to register this custom driver with the DriverManager.
     static {
         try {
-            DriverManager.registerDriver(new Driver());
+            DriverManager.registerDriver(new CIPDriver());
         } catch (SQLException e) {
             throw new RuntimeException("Failed to register the custom JDBC driver.", e);
         }
