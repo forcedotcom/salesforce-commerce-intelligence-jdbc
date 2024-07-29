@@ -3,13 +3,19 @@ package org.cip;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Properties;
+
+import org.apache.calcite.avatica.ConnectionConfigImpl;
+import org.apache.calcite.avatica.ConnectionProperty;
 
 /**
  * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote database with
  * PostgreSQL dialect enabled.
  */
 public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
+
     // Static initializer to register this custom driver with the DriverManager.
     static {
         try {
@@ -64,5 +70,53 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
         // info.setProperty("jwtToken", token);
 
         return super.connect(url, info);
+    }
+
+    @Override
+    public Collection<ConnectionProperty> getConnectionProperties() {
+        return Arrays.asList(createConnectionProperty("instanceId", ConnectionProperty.Type.STRING, true),
+                createConnectionProperty("clientId", ConnectionProperty.Type.STRING, true),
+                createConnectionProperty("clientSecret", ConnectionProperty.Type.STRING, true));
+    }
+
+    private ConnectionProperty createConnectionProperty(String name, ConnectionProperty.Type type, boolean required) {
+        return new ConnectionProperty() {
+            @Override
+            public String name() {
+                return name;
+            }
+
+            @Override
+            public String camelName() {
+                // Converts to camelCase if necessary, for now, it's the same as the name.
+                return name;
+            }
+
+            @Override
+            public Object defaultValue() {
+                return null; // Default value is null, modify if needed
+            }
+
+            @Override
+            public Type type() {
+                return type;
+            }
+
+            @Override
+            public ConnectionConfigImpl.PropEnv wrap(Properties properties) {
+                // Implement this if specific wrapping is needed
+                return null;
+            }
+
+            @Override
+            public boolean required() {
+                return required;
+            }
+
+            @Override
+            public Class<?> valueClass() {
+                return String.class; // Assuming all properties are of type String
+            }
+        };
     }
 }
