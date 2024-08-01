@@ -22,6 +22,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
  * be associated with multiple instances. However, when requesting an OAuth token, you must specify a single instance name in the scope. For
  * example: "SALESFORCE_COMMERCE_API:bgmj_stg". This allows the service to generate a token specifically for the requested instance,
  * ensuring that the permissions and data access are correctly scoped.
+ * Add property amOauthHost = https://account-pod5.demandware.net (to override the AM host name for non-prod)
  */
 public class AmAuthService {
 
