@@ -1,5 +1,3 @@
-Here's an improved version of the README:
-
 # CIP JDBC Data Connector
 
 The CIP JDBC Data Connector allows you to connect to your CIP data warehouse using a JDBC interface, providing seamless integration with various SQL editors and tools.
@@ -63,4 +61,4 @@ amOauthHost=https://account-pod5.demandware.net
 
 In your SQL editor, use the JDBC URL format and provide the necessary credentials to establish a connection. The driver handles the authentication and connection setup using the provided properties.
 
-By following these steps and configurations, you should be able to connect to your CIP data warehouse seamlessly.
+By following these steps and configurations, you should be able to connect to CIP data warehouse seamlessly.
