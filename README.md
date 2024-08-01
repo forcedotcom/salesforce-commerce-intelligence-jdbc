@@ -1,6 +1,6 @@
-# CIP JDBC Data Connector
+# CIP JDBC Driver
 
-The CIP JDBC Data Connector allows you to connect to your CIP data warehouse using a JDBC interface, providing seamless integration with various SQL editors and tools.
+The CIP JDBC Drive allows you to connect to your CIP data warehouse using a JDBC interface, providing seamless integration with various SQL editors and tools.
 
 ## Installation
 
