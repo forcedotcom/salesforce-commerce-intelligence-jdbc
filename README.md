@@ -50,7 +50,7 @@ After building the JAR file, you can install it in your SQL editor of choice. Th
 
 ### User-Defined Properties
 
-You can override the AM host name by adding a user-defined property as shown below:
+You can override the AM host name by adding a user-defined property as shown below: (Default value for this is Production AM URL)
 
 ```properties
 amOauthHost=https://account-pod5.demandware.net
