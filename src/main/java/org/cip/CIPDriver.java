@@ -3,18 +3,28 @@ package org.cip;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Properties;
 
-import org.apache.calcite.avatica.ConnectionConfigImpl;
+import org.apache.calcite.avatica.BuiltInConnectionProperty;
+import org.apache.calcite.avatica.remote.Driver;
+import org.cip.auth.AmAuthService;
 import org.apache.calcite.avatica.ConnectionProperty;
 
 /**
- * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote database with
+ * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote CIP database with
  * PostgreSQL dialect enabled.
  */
 public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
+
+    private static AmAuthService amAuthService;
+
+    public CIPDriver() {
+        amAuthService = new AmAuthService();
+    }
+
+    private static String CIP_JDBC_URL_PREFIX = "jdbc:salesforcecc:";
 
     // Static initializer to register this custom driver with the DriverManager.
     static {
@@ -33,7 +43,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
      */
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        return url.startsWith(getConnectStringPrefix());
+        return url != null && url.startsWith(getConnectStringPrefix());
     }
 
     /**
@@ -43,7 +53,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
      */
     @Override
     protected String getConnectStringPrefix() {
-        return "jdbc:salesforce:remote:";
+        return CIP_JDBC_URL_PREFIX;
     }
 
     /**
@@ -57,66 +67,120 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
         if (!acceptsURL(url)) {
-            throw new SQLException("Invalid Connection String: The connection string must start with '" + getConnectStringPrefix()
-                    + "' (e.g., '" + getConnectStringPrefix() + "//localhost:1234/testdb').");
+            throwCIPBadRequestForInvalidJDBCUrl();
         }
 
-        // Set PostgreSQL dialect for the connection.
+        // Modify the URL from PostgreSQL style to Avatica style
+        ConnectionResult result = convertPostgresUrlToAvatica(url);
+
+        // Here you can add logic to handle authentication or other security features.
+        if (info != null) {
+            // Example for potential authentication handling
+            String clientId = info.getProperty("user");
+            String clientIdSecret = info.getProperty("password");
+
+            // AM host override
+            String amOauthHost = info.getProperty("amOauthHost");
+
+            String amToken = amAuthService.getAMAccessToken(amOauthHost, clientId, clientIdSecret, result.getDatabaseName());
+            info.setProperty("jwtToken", amToken);
+        }
+
+        // Set PostgreSQL dialect for the connection
         info.setProperty("fun", "postgresql");
 
-        // Here we can add logic to handle authentication management (JWT) or other security features.
-        // Example:
-        // String token = AuthenticationService.getToken();
-        // info.setProperty("jwtToken", token);
+        String serialization = info.getProperty(BuiltInConnectionProperty.SERIALIZATION.camelName());
 
-        return super.connect(url, info);
+        if (serialization == null || serialization.isEmpty()) {
+            info.setProperty(BuiltInConnectionProperty.SERIALIZATION.camelName(), Driver.Serialization.PROTOBUF.name());
+        }
+
+        info.setProperty("instanceId", result.getDatabaseName());
+
+        // Pass the modified URL to the parent connect method
+        return super.connect(result.getModifiedUrl(), info);
+    }
+
+    /**
+     * Converts a PostgreSQL-style JDBC URL to an Avatica-compatible URL.
+     *
+     * @param url the PostgreSQL-style JDBC URL.
+     * @return a ConnectionResult containing the converted Avatica URL and the extracted database name.
+     */
+    ConnectionResult convertPostgresUrlToAvatica(String url) throws SQLException {
+        String protocolPrefix = CIP_JDBC_URL_PREFIX + "//";
+        String avaticaPrefix = CIP_JDBC_URL_PREFIX + "url=";
+
+        if (!url.startsWith(protocolPrefix)) {
+            throw new IllegalArgumentException("Invalid PostgreSQL URL format");
+        }
+
+        return convertToAvaticaUrl(url, protocolPrefix, avaticaPrefix);
+    }
+
+    /**
+     * Helper method to convert the URL from PostgreSQL to Avatica format.
+     *
+     * @param url the original URL.
+     * @param protocolPrefix the prefix of the original URL.
+     * @param avaticaPrefix the prefix for the Avatica URL.
+     * @return a ConnectionResult containing the converted URL and database name.
+     */
+    private ConnectionResult convertToAvaticaUrl(String url, String protocolPrefix, String avaticaPrefix) throws SQLException {
+        String remaining = url.substring(protocolPrefix.length());
+        int pathIndex = remaining.indexOf('/');
+
+        if (pathIndex == -1) {
+            throwCIPBadRequestForInvalidJDBCUrl();
+        }
+        int queryIndex = remaining.indexOf('?');
+
+        String hostnamePort = remaining.substring(0, pathIndex);
+
+        if (hostnamePort == null || hostnamePort.isEmpty()) {
+            throwCIPBadRequestForInvalidJDBCUrl();
+        }
+
+        String database = queryIndex == -1 ? remaining.substring(pathIndex + 1) : remaining.substring(pathIndex + 1, queryIndex);
+
+        // This isn't currently used
+        String parameters = queryIndex == -1 ? "" : remaining.substring(queryIndex);
+
+        // Construct the Avatica URL
+        String avaticaUrl = avaticaPrefix + "http://" + hostnamePort;
+        return new ConnectionResult(avaticaUrl, database);
     }
 
     @Override
     public Collection<ConnectionProperty> getConnectionProperties() {
-        return Arrays.asList(createConnectionProperty("instanceId", ConnectionProperty.Type.STRING, true),
-                createConnectionProperty("clientId", ConnectionProperty.Type.STRING, true),
-                createConnectionProperty("clientSecret", ConnectionProperty.Type.STRING, true));
+        return Collections.EMPTY_LIST;
     }
 
-    private ConnectionProperty createConnectionProperty(String name, ConnectionProperty.Type type, boolean required) {
-        return new ConnectionProperty() {
-            @Override
-            public String name() {
-                return name;
-            }
+    /**
+     * Inner class to encapsulate the result of converting a PostgreSQL URL to Avatica format, including the modified URL and the extracted
+     * database name.
+     */
+    static class ConnectionResult {
+        private final String modifiedUrl;
+        private final String databaseName;
 
-            @Override
-            public String camelName() {
-                // Converts to camelCase if necessary, for now, it's the same as the name.
-                return name;
-            }
+        public ConnectionResult(String modifiedUrl, String databaseName) {
+            this.modifiedUrl = modifiedUrl;
+            this.databaseName = databaseName;
+        }
 
-            @Override
-            public Object defaultValue() {
-                return null; // Default value is null, modify if needed
-            }
+        public String getModifiedUrl() {
+            return modifiedUrl;
+        }
 
-            @Override
-            public Type type() {
-                return type;
-            }
+        public String getDatabaseName() {
+            return databaseName;
+        }
+    }
 
-            @Override
-            public ConnectionConfigImpl.PropEnv wrap(Properties properties) {
-                // Implement this if specific wrapping is needed
-                return null;
-            }
+    void throwCIPBadRequestForInvalidJDBCUrl() throws SQLException {
+        throw new SQLException("Invalid Connection String: The connection string must start with '" + getConnectStringPrefix()
+                + "' (e.g., '" + getConnectStringPrefix() + "//localhost:1234/testdb').");
 
-            @Override
-            public boolean required() {
-                return required;
-            }
-
-            @Override
-            public Class<?> valueClass() {
-                return String.class; // Assuming all properties are of type String
-            }
-        };
     }
 }

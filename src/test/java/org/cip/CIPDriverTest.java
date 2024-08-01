@@ -15,12 +15,16 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+/**
+ * Unit Test
+ */
+
 public class CIPDriverTest {
 
     private CIPDriver CIPDriver;
     private Properties properties;
-    private String validURL = "jdbc:salesforce:remote:testUrl";
-    private String invalidURL = "jdbc:invalid:remote";
+    private String validURL = "jdbc:salesforcecc:testUrl";
+    private String invalidURL = "jdbc:invalid:testUrl";
 
     @Before
     public void setUp() {
@@ -36,7 +40,7 @@ public class CIPDriverTest {
 
     @Test
     public void testGetConnectStringPrefix() {
-        assertEquals("Connection string prefix should match", "jdbc:salesforce:remote:", CIPDriver.getConnectStringPrefix());
+        assertEquals("Connection string prefix should match", "jdbc:salesforcecc:", CIPDriver.getConnectStringPrefix());
     }
 
     @Ignore

@@ -84,6 +84,8 @@
     </dependency>
   </dependencies>
   <properties>
+    <javaFormatter.plugin.version>2.11.0</javaFormatter.plugin.version>
+    <javaVersion>17</javaVersion>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>
