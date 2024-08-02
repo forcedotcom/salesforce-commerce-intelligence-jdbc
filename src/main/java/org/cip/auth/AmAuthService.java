@@ -21,8 +21,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
  * AmAuthService is responsible for obtaining OAuth tokens from the Account Manager service using client credentials. A single client ID can
  * be associated with multiple instances. However, when requesting an OAuth token, you must specify a single instance name in the scope. For
  * example: "SALESFORCE_COMMERCE_API:bgmj_stg". This allows the service to generate a token specifically for the requested instance,
- * ensuring that the permissions and data access are correctly scoped.
- * Add property amOauthHost = https://account-pod5.demandware.net (to override the AM host name for non-prod)
+ * ensuring that the permissions and data access are correctly scoped. Add property amOauthHost = https://account-pod5.demandware.net (to
+ * override the AM host name for non-prod)
  */
 public class AmAuthService {
 
@@ -100,7 +100,7 @@ public class AmAuthService {
             {
                 if ( e.getStatusCode() == HttpStatus.UNAUTHORIZED )
                 {
-                    throw new SQLException( e.getMessage() + ".Verify User name and password" );
+                    throw new SQLException( "401 Unauthorized. Please verify your username and password." );
                 }
                 else if ( e.getStatusCode() == HttpStatus.BAD_REQUEST )
                 {
