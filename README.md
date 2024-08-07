@@ -37,6 +37,9 @@ Navigate to the Libraries tab and click on Add File. Choose the location of the 
 
 <img width="500" alt="image" src="https://git.soma.salesforce.com/storage/user/8475/files/c8f6dc51-5610-4d7a-9451-a8a1507ed004">
 
+Click on OK.
+
+Now, Navigate to Database -> New Database Connection. Click the driver you registered in the step above and Click on Next.
 
 ### Properties
 
