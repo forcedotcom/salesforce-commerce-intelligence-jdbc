@@ -28,7 +28,7 @@ public class CIPDriverIT {
             }
 
             Class.forName( "org.cip.CIPDriver" );
-            Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://localhost:9787/bjnl_pr",
+            Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://localhost:9787/bjnl_prd",
                             "fff01280-e3c3-43e5-8006-5ea1301f9c50", "Demandware1!" );
             System.out.println( "Connection established: " + ( conn != null ) );
         }
