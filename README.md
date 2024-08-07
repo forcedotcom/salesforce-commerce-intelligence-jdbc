@@ -35,10 +35,14 @@ After building the JAR file, you can install it in your SQL editor of choice. Th
    - **Required**: Yes
    - **Example**: `jdbc:salesforcecc://localhost:9787/bjnl_prd`
 
+For QA env: use 'jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjnl_prd'
+
 2. **Username**
    - **Description**: The Client ID provided by the Account Manager.
    - **Type**: String
    - **Required**: Yes
+
+For QA env: use 'fff01280-e3c3-43e5-8006-5ea1301f9c50'
 
 3. **Password**
    - **Description**: The Client Secret provided by the Account Manager.
