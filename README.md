@@ -8,8 +8,8 @@ To build and install the JDBC driver, follow these steps:
 
 1. **Clone the Repository**
    ```bash
-   git clone https://git.soma.salesforce.com/cc-commerce-intelligence-platform/cip-service-dataconnector.git
-   cd cip-service-dataconnector
+   git clone https://git.soma.salesforce.com/cc-commerce-intelligence-platform/cip-client-dataconnector.git
+   cd cip-client-dataconnector
    ```
 
 2. **Build the Driver**
@@ -23,6 +23,17 @@ To build and install the JDBC driver, follow these steps:
 ## Usage
 
 After building the JAR file, you can install it in your SQL editor of choice. The JDBC driver exposes three main properties that you need to configure for connecting to your data sources:
+
+**Registering the CIP Driver in DBeaver**
+Assuming you are using DBeaver, follow these steps to register the CIPDriver:
+
+1. Open DBeaver
+2. Go to Database -> Driver Manager.
+3. Click on New and enter the Driver name and then Driver Class as ```org.cip.CIPDriver```.
+
+<img width="496" alt="image" src="https://git.soma.salesforce.com/storage/user/8475/files/99dd309a-4cba-4e4d-ae76-6100d53bbb46">
+
+Navigate to the Libraries tab and click on Add File. Choose the location of the CIP Driver JAR file you built earlier. Click on Find driver.
 
 <img width="500" alt="image" src="https://git.soma.salesforce.com/storage/user/8475/files/c8f6dc51-5610-4d7a-9451-a8a1507ed004">
 
