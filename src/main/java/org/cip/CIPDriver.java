@@ -147,7 +147,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
         String parameters = queryIndex == -1 ? "" : remaining.substring(queryIndex);
 
         // Construct the Avatica URL
-        String avaticaUrl = avaticaPrefix + "http://" + hostnamePort;
+        String avaticaUrl = avaticaPrefix + "https://" + hostnamePort;
         return new ConnectionResult(avaticaUrl, database);
     }
 
