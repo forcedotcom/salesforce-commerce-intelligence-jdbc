@@ -70,6 +70,15 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.amashchenko.maven.plugin</groupId>
+                <artifactId>gitflow-maven-plugin</artifactId>
+                <version>1.21.0</version>
+                <configuration>
+                    <skipFeatureVersion>true</skipFeatureVersion>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 
