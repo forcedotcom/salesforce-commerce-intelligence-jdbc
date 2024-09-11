@@ -16,7 +16,7 @@ import org.apache.calcite.avatica.ConnectionProperty;
  * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote CIP database with
  * PostgreSQL dialect enabled.
  */
-public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
+public class CIPDriver extends Driver {
 
     private static AmAuthService amAuthService;
 
@@ -70,8 +70,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
             throwCIPBadRequestForInvalidJDBCUrl();
         }
 
-        // Modify the URL from PostgreSQL style to Avatica style
-        ConnectionResult result = convertPostgresUrlToAvatica(url);
+        ConnectionResult result = null;
 
         // Here you can add logic to handle authentication or other security features.
         if (info != null) {
@@ -81,6 +80,21 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
 
             // AM host override
             String amOauthHost = info.getProperty("amOauthHost");
+
+            // Check for SSL property; default to `true` for HTTPS if not provided
+            boolean isSSL = true; // Default to HTTPS
+            String sslProperty = info.getProperty("ssl");
+            if (sslProperty != null) {
+                isSSL = Boolean.parseBoolean(sslProperty);
+            }
+
+            // Modify the URL from PostgreSQL style to Avatica style
+            result = convertPostgresUrlToAvatica(url, isSSL);
+
+            // Handle the case where result is null
+            if (result == null) {
+                throw new SQLException("Failed to convert PostgreSQL URL to Avatica URL.");
+            }
 
             String amToken = amAuthService.getAMAccessToken(amOauthHost, clientId, clientIdSecret, result.getDatabaseName());
             info.setProperty("jwtToken", amToken);
@@ -92,7 +106,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
         String serialization = info.getProperty(BuiltInConnectionProperty.SERIALIZATION.camelName());
 
         if (serialization == null || serialization.isEmpty()) {
-            info.setProperty(BuiltInConnectionProperty.SERIALIZATION.camelName(), Driver.Serialization.PROTOBUF.name());
+            info.setProperty(BuiltInConnectionProperty.SERIALIZATION.camelName(), Serialization.PROTOBUF.name());
         }
 
         info.setProperty("instanceId", result.getDatabaseName());
@@ -107,7 +121,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
      * @param url the PostgreSQL-style JDBC URL.
      * @return a ConnectionResult containing the converted Avatica URL and the extracted database name.
      */
-    ConnectionResult convertPostgresUrlToAvatica(String url) throws SQLException {
+    ConnectionResult convertPostgresUrlToAvatica(String url, boolean isSSL) throws SQLException {
         String protocolPrefix = CIP_JDBC_URL_PREFIX + "//";
         String avaticaPrefix = CIP_JDBC_URL_PREFIX + "url=";
 
@@ -115,18 +129,27 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
             throw new IllegalArgumentException("Invalid PostgreSQL URL format");
         }
 
-        return convertToAvaticaUrl(url, protocolPrefix, avaticaPrefix);
+        return convertToAvaticaUrl(url, protocolPrefix, avaticaPrefix, isSSL);
     }
 
     /**
-     * Helper method to convert the URL from PostgreSQL to Avatica format.
+     * Helper method to convert a PostgreSQL-style URL to an Avatica-compatible URL.
      *
-     * @param url the original URL.
-     * @param protocolPrefix the prefix of the original URL.
-     * @param avaticaPrefix the prefix for the Avatica URL.
+     * This method takes a PostgreSQL JDBC URL, extracts the hostname and database name, and converts it into a format compatible with
+     * Avatica. The method also toggles between HTTP and HTTPS based on the provided SSL setting.
+     *
+     * Example: Input URL: "jdbc:postgresql://localhost:5432/mydatabase?user=user&password=pass" Output URL:
+     * "jdbc:avatica:url=https://localhost:5432"
+     *
+     * @param url the original PostgreSQL-style JDBC URL.
+     * @param protocolPrefix the prefix of the original URL (e.g., "jdbc:postgresql://").
+     * @param avaticaPrefix the prefix for the Avatica URL (e.g., "jdbc:avatica:url=").
+     * @param isSSL boolean flag indicating whether to use HTTPS (true) or HTTP (false).
      * @return a ConnectionResult containing the converted URL and database name.
+     * @throws SQLException if the URL format is invalid or other issues arise during conversion.
      */
-    private ConnectionResult convertToAvaticaUrl(String url, String protocolPrefix, String avaticaPrefix) throws SQLException {
+    private ConnectionResult convertToAvaticaUrl(String url, String protocolPrefix, String avaticaPrefix, boolean isSSL)
+            throws SQLException {
         String remaining = url.substring(protocolPrefix.length());
         int pathIndex = remaining.indexOf('/');
 
@@ -147,7 +170,7 @@ public class CIPDriver extends org.apache.calcite.avatica.remote.Driver {
         String parameters = queryIndex == -1 ? "" : remaining.substring(queryIndex);
 
         // Construct the Avatica URL
-        String avaticaUrl = avaticaPrefix + "https://" + hostnamePort;
+        String avaticaUrl = avaticaPrefix + (isSSL ? "https" : "http") + "://" + hostnamePort;
         return new ConnectionResult(avaticaUrl, database);
     }
 
