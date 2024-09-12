@@ -24,6 +24,11 @@ public class CIPDriver extends Driver {
         amAuthService = new AmAuthService();
     }
 
+    // Constructor for dependency injection (for testing purposes)
+    public CIPDriver(AmAuthService amAuthService) {
+        this.amAuthService = amAuthService;
+    }
+
     private static String CIP_JDBC_URL_PREFIX = "jdbc:salesforcecc:";
 
     // Static initializer to register this custom driver with the DriverManager.
@@ -84,10 +89,17 @@ public class CIPDriver extends Driver {
             // Check for SSL property; default to `true` for HTTPS if not provided
             boolean isSSL = true; // Default to HTTPS
             String sslProperty = info.getProperty("ssl");
-            if (sslProperty != null) {
-                isSSL = Boolean.parseBoolean(sslProperty);
-            }
 
+            if (sslProperty != null) {
+                if (sslProperty.equalsIgnoreCase("true")) {
+                    isSSL = true;
+                } else if (sslProperty.equalsIgnoreCase("false")) {
+                    isSSL = false;
+                } else {
+                    // Handle invalid value by throwing an exception
+                    throw new SQLException("Invalid value for ssl property. Expected 'true' or 'false', but got: " + sslProperty);
+                }
+            }
             // Modify the URL from PostgreSQL style to Avatica style
             result = convertPostgresUrlToAvatica(url, isSSL);
 
@@ -111,8 +123,14 @@ public class CIPDriver extends Driver {
 
         info.setProperty("instanceId", result.getDatabaseName());
 
-        // Pass the modified URL to the parent connect method
-        return super.connect(result.getModifiedUrl(), info);
+        // Call the overridable method instead of super.connect directly
+        return doConnect(result.getModifiedUrl(), info);
+    }
+
+    // This method is protected so that it can be overridden in tests
+    // Pass the modified URL to the parent connect method
+    protected Connection doConnect(String url, Properties info) throws SQLException {
+        return super.connect(url, info);
     }
 
     /**
