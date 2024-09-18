@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.cip</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
@@ -172,6 +172,26 @@
                 <configuration>
                     <skipFeatureVersion>true</skipFeatureVersion>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>eu.somatik.serviceloader-maven-plugin</groupId>
+                <artifactId>serviceloader-maven-plugin</artifactId>
+                <version>1.3.1</version>
+                <configuration>
+                    <services>
+                        <param>java.sql.Driver</param>
+                    </services>
+                    <includes>
+                        <include>*Driver*</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
