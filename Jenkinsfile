@@ -48,7 +48,23 @@ executePipeline(envDef) {
             CodeCoverageUtils.publishAndValidateCoverageReport(this, [run_sonar_analysis: true, tool_name:'jacoco', inclusion_patterns:'org/cip/auth/**', code_coverage_tool_version:'0.8.12'])
         }
 
+        stage("Publish") {
+            //deploy the compiled artifact to Nexus
+            if (env.BRANCH_NAME == "master") {
+                //follow release process described here: https://confluence.internal.salesforce.com/display/public/ZEN/Publishing+to+Nexus+on+SFCI
+                mavenVersionsSet([managed: false, auto_increment: false])
+                mavenBuild maven_args: '-DskipUTs -DskipTests -DskipITs'
+                mavenStageArtifacts()
+                mavenPromoteArtifacts()
+            } else {
+                //for non master branches, we just deploy a snapshot
+                cip_utils.updateFeatureBranchVersion()
+                mavenDeploySnapshots maven_args: '-DskipUTs -DskipTests -DskipITs'
+            }
+        }
 
-        //TODO: decide where to uplaod the jar to
+        stage('GUS Compliance'){
+            git2gus()
+        }
     }
 }
