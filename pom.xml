@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.cip</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.3-SNAPSHOT</version>
+  <version>0.1.3</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
