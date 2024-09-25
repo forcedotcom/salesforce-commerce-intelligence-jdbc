@@ -29,7 +29,7 @@ Assuming you are using DBeaver, follow these steps to register the CIPDriver:
 
 1. Open DBeaver
 2. Go to Database -> Driver Manager.
-3. Click on New and enter the Driver name and then Driver Class as ```org.cip.CIPDriver```.
+3. Click on New and enter the Driver name and then Driver Class as ```com.salesforce.commerce.intelligence.jdbc.client.CIPDriver```.
 
 <img width="496" alt="image" src="https://git.soma.salesforce.com/storage/user/8475/files/99dd309a-4cba-4e4d-ae76-6100d53bbb46">
 

@@ -1,7 +1,8 @@
-package org.cip.auth;
+package com.salesforce.commerce.intelligence.jdbc.client.auth;
 
 import java.sql.SQLException;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.core.ParameterizedTypeReference;
@@ -54,7 +55,7 @@ public class AmAuthService {
      * @return The access token as a String, or null if authentication fails.
      * @throws SQLException If the request is unauthorized or has bad credentials.
      */
-    public String getAMAccessToken( String amOAuthHost, String amClientId, String amClientSecret, String instanceId )
+    public Map<String, String> getAMAccessToken( String amOAuthHost, String amClientId, String amClientSecret, String instanceId )
                     throws SQLException
     {
         // Use the provided OAuth host or fallback to the default
@@ -91,7 +92,10 @@ public class AmAuthService {
             // Extract and return the access token from the response
             if ( response.getStatusCode().is2xxSuccessful() )
             {
-                return response.getBody().get( "access_token" );
+                Map tokenAndExpiresIn = new HashMap<>();
+                tokenAndExpiresIn.put("access_token", response.getBody().get( "access_token" ));
+                tokenAndExpiresIn.put( "expires_in",  response.getBody().get( "expires_in" ));
+                return tokenAndExpiresIn;
             }
         }
         catch ( HttpClientErrorException e )
