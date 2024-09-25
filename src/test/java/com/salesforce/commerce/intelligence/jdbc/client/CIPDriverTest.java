@@ -1,4 +1,4 @@
-package org.cip;
+package com.salesforce.commerce.intelligence.jdbc.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -9,13 +9,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Properties;
 
-import org.cip.auth.AmAuthService;
+import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -27,7 +26,6 @@ public class CIPDriverTest {
 
     private CIPDriver cipDriver;
     private Properties properties;
-    private AmAuthService mockAmAuthService;
     private Connection mockConnection;
     CIPDriver spyDriver;
 
@@ -41,8 +39,7 @@ public class CIPDriverTest {
         properties.setProperty("password", "testPass");
         properties.setProperty("amOauthHost", "testHost");
 
-        mockAmAuthService = Mockito.mock(AmAuthService.class);
-        cipDriver = new CIPDriver(mockAmAuthService);
+        cipDriver = new CIPDriver();
         mockConnection = mock(Connection.class);
         // Create a spy of CIPDriver
         spyDriver = Mockito.spy(cipDriver);
@@ -69,10 +66,14 @@ public class CIPDriverTest {
         // Setup
         properties.setProperty("ssl", "true");
 
-        String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
+        // Create a mock map
+        Map<String, String> mockMap = mock(Map.class);
 
-        // Mocking the AM service
-        when(mockAmAuthService.getAMAccessToken("testHost", "testUser", "testPass", "mydatabase")).thenReturn("mockToken");
+        // Define behavior for the mock map
+        when(mockMap.get("access_token")).thenReturn("mockToken");
+        when(mockMap.get("expires_in")).thenReturn("3600");
+
+        String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
 
         // Mocking the super.connect method
         when(spyDriver.doConnect(Mockito.anyString(), Mockito.any(Properties.class))).thenReturn(mockConnection);
@@ -84,7 +85,6 @@ public class CIPDriverTest {
         assertNotNull("Connection should not be null when URL is correct", connection);
         CIPDriver.ConnectionResult result = cipDriver.convertPostgresUrlToAvatica(url, true);
         assertEquals("jdbc:salesforcecc:url=https://localhost:5432", result.getModifiedUrl());
-        assertEquals("mockToken", properties.getProperty("jwtToken"));
     }
 
     @Test
@@ -92,10 +92,14 @@ public class CIPDriverTest {
         // Setup
         properties.setProperty("ssl", "false");
 
-        String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
+        // Create a mock map
+        Map<String, String> mockMap = mock(Map.class);
 
-        // Mocking the AM service
-        when(mockAmAuthService.getAMAccessToken("testHost", "testUser", "testPass", "mydatabase")).thenReturn("mockToken");
+        // Define behavior for the mock map
+        when(mockMap.get("access_token")).thenReturn("mockToken");
+        when(mockMap.get("expires_in")).thenReturn("3600");
+
+        String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
 
         // Mocking the super.connect method
         when(spyDriver.doConnect(Mockito.anyString(), Mockito.any(Properties.class))).thenReturn(mockConnection);
@@ -113,8 +117,12 @@ public class CIPDriverTest {
     public void testConnect_withNoSSLProperty() throws SQLException {
         String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
 
-        // Mocking the AM service
-        when(mockAmAuthService.getAMAccessToken("testHost", "testUser", "testPass", "mydatabase")).thenReturn("mockToken");
+        // Create a mock map
+        Map<String, String> mockMap = mock(Map.class);
+
+        // Define behavior for the mock map
+        when(mockMap.get("access_token")).thenReturn("mockToken");
+        when(mockMap.get("expires_in")).thenReturn("3600");
 
         // Mocking the super.connect method
         when(spyDriver.doConnect(Mockito.anyString(), Mockito.any(Properties.class))).thenReturn(mockConnection);
@@ -136,9 +144,12 @@ public class CIPDriverTest {
 
         String url = "jdbc:salesforcecc://localhost:5432/mydatabase";
 
-        // Mocking the AM service
-        when(mockAmAuthService.getAMAccessToken("testHost", "testUser", "testPass", "mydatabase"))
-                        .thenReturn("mockToken");
+        // Create a mock map
+        Map<String, String> mockMap = mock(Map.class);
+
+        // Define behavior for the mock map
+        when(mockMap.get("access_token")).thenReturn("mockToken");
+        when(mockMap.get("expires_in")).thenReturn("3600");
 
         // Mocking the super.connect method
         when(spyDriver.doConnect(Mockito.anyString(), Mockito.any(Properties.class))).thenReturn(mockConnection);

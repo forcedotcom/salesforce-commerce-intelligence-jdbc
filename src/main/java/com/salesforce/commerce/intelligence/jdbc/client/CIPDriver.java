@@ -1,4 +1,4 @@
-package org.cip;
+package com.salesforce.commerce.intelligence.jdbc.client;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -8,9 +8,10 @@ import java.util.Collections;
 import java.util.Properties;
 
 import org.apache.calcite.avatica.BuiltInConnectionProperty;
-import org.apache.calcite.avatica.remote.Driver;
-import org.cip.auth.AmAuthService;
 import org.apache.calcite.avatica.ConnectionProperty;
+import org.apache.calcite.avatica.remote.Driver;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote CIP database with
@@ -18,15 +19,13 @@ import org.apache.calcite.avatica.ConnectionProperty;
  */
 public class CIPDriver extends Driver {
 
-    private static AmAuthService amAuthService;
+    // ThreadLocal to store properties per thread
+    public static ThreadLocal<Properties> connectionProperties = new ThreadLocal<>();
+
+    private static final Logger LOG = LogManager.getLogger(CIPDriver.class);
 
     public CIPDriver() {
-        amAuthService = new AmAuthService();
-    }
 
-    // Constructor for dependency injection (for testing purposes)
-    public CIPDriver(AmAuthService amAuthService) {
-        this.amAuthService = amAuthService;
     }
 
     private static String CIP_JDBC_URL_PREFIX = "jdbc:salesforcecc:";
@@ -71,21 +70,17 @@ public class CIPDriver extends Driver {
      */
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
+        LOG.info("In connect method");
+
+        connectionProperties.set(info);
+
         if (!acceptsURL(url)) {
             throwCIPBadRequestForInvalidJDBCUrl();
         }
 
         ConnectionResult result = null;
 
-        // Here you can add logic to handle authentication or other security features.
         if (info != null) {
-            // Example for potential authentication handling
-            String clientId = info.getProperty("user");
-            String clientIdSecret = info.getProperty("password");
-
-            // AM host override
-            String amOauthHost = info.getProperty("amOauthHost");
-
             // Check for SSL property; default to `true` for HTTPS if not provided
             boolean isSSL = true; // Default to HTTPS
             String sslProperty = info.getProperty("ssl");
@@ -108,8 +103,6 @@ public class CIPDriver extends Driver {
                 throw new SQLException("Failed to convert PostgreSQL URL to Avatica URL.");
             }
 
-            String amToken = amAuthService.getAMAccessToken(amOauthHost, clientId, clientIdSecret, result.getDatabaseName());
-            info.setProperty("jwtToken", amToken);
         }
 
         // Set PostgreSQL dialect for the connection
@@ -122,6 +115,21 @@ public class CIPDriver extends Driver {
         }
 
         info.setProperty("instanceId", result.getDatabaseName());
+
+        // Specify the use of a custom HTTP client implementation for Avatica.
+        // This custom client will handle injecting the Authorization token into each request,
+        // and it also manages token refreshing when the token is about to expire.
+        //
+        // The 'BuiltInConnectionProperty.HTTP_CLIENT_IMPL' property allows you to specify a
+        // fully qualified class name of a custom AvaticaHttpClient implementation.
+        //
+        // In this case, we are using 'org.cip.CustomAvaticaHttpClient', which extends the default
+        // AvaticaHttpClient behavior to:
+        //   - Add a JWT token to the Authorization header for every request.
+        //   - Refresh the token automatically before it expires.
+        //
+        // This approach ensures secure communication between the JDBC client and the Avatica server.
+        info.setProperty(BuiltInConnectionProperty.HTTP_CLIENT_IMPL.camelName(), "com.salesforce.commerce.intelligence.jdbc.client.CIPAvaticaHttpClient");
 
         // Call the overridable method instead of super.connect directly
         return doConnect(result.getModifiedUrl(), info);

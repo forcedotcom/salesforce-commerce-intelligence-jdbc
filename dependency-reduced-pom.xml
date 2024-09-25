@@ -22,7 +22,7 @@
         <configuration>
           <archive>
             <manifestEntries>
-              <Driver-Class>org.cip.CIPDriver</Driver-Class>
+              <Driver-Class>com.salesforce.commerce.intelligence.jdbc.client.CIPDriver</Driver-Class>
             </manifestEntries>
           </archive>
         </configuration>
