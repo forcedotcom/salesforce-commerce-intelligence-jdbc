@@ -13,7 +13,6 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 
-import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;

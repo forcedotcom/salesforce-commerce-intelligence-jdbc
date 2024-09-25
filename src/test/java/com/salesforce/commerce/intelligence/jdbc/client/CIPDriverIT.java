@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.util.Enumeration;
 import java.util.Properties;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -19,6 +20,7 @@ import org.junit.Test;
  * This test is disabled by default as it requires external dependencies and won't work in Jenkins CI environments. However, it is useful
  * for local testing with authentication. To run this test locally, simply enable it by removing the appropriate annotations or comments.
  */
+@Ignore
 public class CIPDriverIT {
 
     @Test
