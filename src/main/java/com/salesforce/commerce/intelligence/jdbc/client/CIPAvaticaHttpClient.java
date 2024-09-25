@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -138,8 +139,14 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
      * @return The response as a byte array.
      * @throws IOException If an I/O error occurs during the read.
      */
-    private byte[] readResponse(HttpURLConnection connection) throws IOException {
-        return connection.getInputStream().readAllBytes();
+    private byte[] readResponse( HttpURLConnection connection )
+                    throws IOException
+    {
+        // Use try-with-resources to ensure the InputStream is closed automatically
+        try (InputStream inputStream = connection.getInputStream())
+        {
+            return inputStream.readAllBytes(); // Read response bytes
+        }
     }
 
     /**
