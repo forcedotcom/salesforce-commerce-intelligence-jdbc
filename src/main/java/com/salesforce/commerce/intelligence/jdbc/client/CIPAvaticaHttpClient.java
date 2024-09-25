@@ -2,6 +2,8 @@ package com.salesforce.commerce.intelligence.jdbc.client;
 
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
 import org.apache.calcite.avatica.remote.AvaticaCommonsHttpClientImpl;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,6 +31,8 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
     private final String clientId;
     private final String clientSecret;
     private final String instanceId;
+
+    private static final Logger LOG = LogManager.getLogger(CIPAvaticaHttpClient.class);
 
     /**
      * Constructor for CustomAvaticaHttpClient. Initializes the client and fetches OAuth2 parameters from the connection properties.
@@ -71,10 +75,14 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
     @Override
     public byte[] send(byte[] request) {
         // Generate or refresh the JWT token if it hasn't been generated yet or if it's nearing expiration
+        LOG.debug("In send method.");
         if (isTokenExpiredOrMissing()) {
             try {
+                LOG.debug("refresh Token");
                 refreshToken();
+                LOG.debug("Token refreshed");
             } catch (SQLException e) {
+                LOG.error("Failed to generate or refresh JWT token", e);
                 throw new RuntimeException("Failed to generate or refresh JWT token", e);
             }
         }
@@ -89,6 +97,7 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
             sendRequestPayload(connection, request);
             return readResponse(connection);
         } catch (IOException e) {
+            LOG.error("Error sending request to Avatica server", e);
             throw new RuntimeException("Error sending request to Avatica server", e);
         }
     }
@@ -141,7 +150,9 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
     private boolean isTokenExpiredOrMissing() {
         // Token needs to be generated for the first time (tokenExpiryTime == 0)
         // or refreshed when close to expiry
-        return tokenExpiryTime == 0 || System.currentTimeMillis() >= tokenExpiryTime - TOKEN_EXPIRY_THRESHOLD;
+        boolean isTokenExpiredOrMissing = tokenExpiryTime == 0 || System.currentTimeMillis() >= tokenExpiryTime - TOKEN_EXPIRY_THRESHOLD;
+        LOG.debug("isTokenExpiredOrMissing: {}", isTokenExpiredOrMissing);
+        return isTokenExpiredOrMissing;
     }
 
     /**
@@ -151,6 +162,7 @@ public class CIPAvaticaHttpClient extends AvaticaCommonsHttpClientImpl {
      */
     private void refreshToken() throws SQLException {
         // Call the authentication service to obtain a new token
+        LOG.debug("refreshing Token");
         Map<String, String> tokenResponse = amAuthService.getAMAccessToken(amOauthHost, clientId, clientSecret, instanceId);
         jwtToken = tokenResponse.get("access_token");
         tokenExpiryTime = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000); // Set new expiration

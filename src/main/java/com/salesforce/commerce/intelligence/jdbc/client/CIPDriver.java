@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 
+import com.salesforce.commerce.intelligence.jdbc.client.util.LoggingManager;
 import org.apache.calcite.avatica.BuiltInConnectionProperty;
 import org.apache.calcite.avatica.ConnectionProperty;
 import org.apache.calcite.avatica.remote.Driver;
@@ -25,7 +26,6 @@ public class CIPDriver extends Driver {
     private static final Logger LOG = LogManager.getLogger(CIPDriver.class);
 
     public CIPDriver() {
-
     }
 
     private static String CIP_JDBC_URL_PREFIX = "jdbc:salesforcecc:";
@@ -69,70 +69,96 @@ public class CIPDriver extends Driver {
      * @throws SQLException if a database access error occurs or the url is invalid.
      */
     @Override
-    public Connection connect(String url, Properties info) throws SQLException {
-        LOG.info("In connect method");
+    public Connection connect(String url, Properties info) throws SQLException
+    {
 
-        connectionProperties.set(info);
+        // Control logging based on the 'enableLogging' property in the Properties object
+        // Configure logging for the classes
+        LoggingManager.configureLogging(info);
 
-        if (!acceptsURL(url)) {
-            throwCIPBadRequestForInvalidJDBCUrl();
-        }
+        LOG.debug( "In connect method" );
 
-        ConnectionResult result = null;
+        connectionProperties.set( info );
+        try
+        {
+            if ( !acceptsURL( url ) )
+            {
+                throwCIPBadRequestForInvalidJDBCUrl();
+            }
 
-        if (info != null) {
-            // Check for SSL property; default to `true` for HTTPS if not provided
-            boolean isSSL = true; // Default to HTTPS
-            String sslProperty = info.getProperty("ssl");
+            ConnectionResult result = null;
 
-            if (sslProperty != null) {
-                if (sslProperty.equalsIgnoreCase("true")) {
-                    isSSL = true;
-                } else if (sslProperty.equalsIgnoreCase("false")) {
-                    isSSL = false;
-                } else {
-                    // Handle invalid value by throwing an exception
-                    throw new SQLException("Invalid value for ssl property. Expected 'true' or 'false', but got: " + sslProperty);
+            if ( info != null )
+            {
+                // Check for SSL property; default to `true` for HTTPS if not provided
+                boolean isSSL = true; // Default to HTTPS
+                String sslProperty = info.getProperty( "ssl" );
+
+                if ( sslProperty != null )
+                {
+                    if ( sslProperty.equalsIgnoreCase( "true" ) )
+                    {
+                        isSSL = true;
+                    }
+                    else if ( sslProperty.equalsIgnoreCase( "false" ) )
+                    {
+                        isSSL = false;
+                    }
+                    else
+                    {
+                        // Handle invalid value by throwing an exception
+                        throw new SQLException(
+                                        "Invalid value for ssl property. Expected 'true' or 'false', but got: " + sslProperty );
+                    }
                 }
+                // Modify the URL from PostgreSQL style to Avatica style
+                result = convertPostgresUrlToAvatica( url, isSSL );
+
+                // Handle the case where result is null
+                if ( result == null )
+                {
+                    throw new SQLException( "Failed to convert PostgreSQL URL to Avatica URL." );
+                }
+
             }
-            // Modify the URL from PostgreSQL style to Avatica style
-            result = convertPostgresUrlToAvatica(url, isSSL);
 
-            // Handle the case where result is null
-            if (result == null) {
-                throw new SQLException("Failed to convert PostgreSQL URL to Avatica URL.");
+            // Set PostgreSQL dialect for the connection
+            info.setProperty( "fun", "postgresql" );
+
+            String serialization = info.getProperty( BuiltInConnectionProperty.SERIALIZATION.camelName() );
+
+            if ( serialization == null || serialization.isEmpty() )
+            {
+                info.setProperty( BuiltInConnectionProperty.SERIALIZATION.camelName(), Serialization.PROTOBUF.name() );
             }
 
+            info.setProperty( "instanceId", result.getDatabaseName() );
+
+            // Specify the use of a custom HTTP client implementation for Avatica.
+            // This custom client will handle injecting the Authorization token into each request,
+            // and it also manages token refreshing when the token is about to expire.
+            //
+            // The 'BuiltInConnectionProperty.HTTP_CLIENT_IMPL' property allows you to specify a
+            // fully qualified class name of a custom AvaticaHttpClient implementation.
+            //
+            // In this case, we are using 'com.salesforce.commerce.intelligence.jdbc.client.CIPAvaticaHttpClient', which extends the default
+            // AvaticaCommonsHttpClientImpl behavior to:
+            //   - Add a JWT token to the Authorization header for every request.
+            //   - Refresh the token automatically before it expires.
+            //
+            // This approach ensures secure communication between the JDBC client and the Avatica server.
+            info.setProperty( BuiltInConnectionProperty.HTTP_CLIENT_IMPL.camelName(),
+                            "com.salesforce.commerce.intelligence.jdbc.client.CIPAvaticaHttpClient" );
+
+            // Call the overridable method instead of super.connect directly
+            return doConnect( result.getModifiedUrl(), info );
         }
-
-        // Set PostgreSQL dialect for the connection
-        info.setProperty("fun", "postgresql");
-
-        String serialization = info.getProperty(BuiltInConnectionProperty.SERIALIZATION.camelName());
-
-        if (serialization == null || serialization.isEmpty()) {
-            info.setProperty(BuiltInConnectionProperty.SERIALIZATION.camelName(), Serialization.PROTOBUF.name());
+        finally
+        {
+            // Always ensure that the ThreadLocal is cleared
+            connectionProperties.remove();
+            LOG.debug( "ThreadLocal connectionProperties cleared after connection setup." );
         }
-
-        info.setProperty("instanceId", result.getDatabaseName());
-
-        // Specify the use of a custom HTTP client implementation for Avatica.
-        // This custom client will handle injecting the Authorization token into each request,
-        // and it also manages token refreshing when the token is about to expire.
-        //
-        // The 'BuiltInConnectionProperty.HTTP_CLIENT_IMPL' property allows you to specify a
-        // fully qualified class name of a custom AvaticaHttpClient implementation.
-        //
-        // In this case, we are using 'org.cip.CustomAvaticaHttpClient', which extends the default
-        // AvaticaHttpClient behavior to:
-        //   - Add a JWT token to the Authorization header for every request.
-        //   - Refresh the token automatically before it expires.
-        //
-        // This approach ensures secure communication between the JDBC client and the Avatica server.
-        info.setProperty(BuiltInConnectionProperty.HTTP_CLIENT_IMPL.camelName(), "com.salesforce.commerce.intelligence.jdbc.client.CIPAvaticaHttpClient");
-
-        // Call the overridable method instead of super.connect directly
-        return doConnect(result.getModifiedUrl(), info);
     }
 
     // This method is protected so that it can be overridden in tests

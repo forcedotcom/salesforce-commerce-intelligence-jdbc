@@ -21,7 +21,7 @@
 
     <Loggers>
         <!-- Root logger configuration -->
-        <Root level="info">
+        <Root level="error">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
         </Root>

@@ -40,6 +40,7 @@ public class CIPDriverIT {
             properties.put( "user", "fff01280-e3c3-43e5-8006-5ea1301f9c50" );
             properties.put( "password", "Demandware1!" );
             properties.put( "amOauthHost", "https://account-pod5.demandware.net" );
+            //properties.put( "enableLogging", "true" );
 
             Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
             Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://localhost:9787/bjnl_prd",
