@@ -16,22 +16,18 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication.
- * It manages the lifecycle of a token, including generating the token when needed, refreshing
- * it before expiry, and injecting the Authorization header into every request sent to the Avatica server.
+ * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication. It manages the lifecycle of a token, including
+ * generating the token when needed, refreshing it before expiry, and injecting the Authorization header into every request sent to the
+ * Avatica server.
  */
 public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
 
     // Refresh the token 5 minutes before expiry
     private static final long TOKEN_EXPIRY_THRESHOLD_MS = 5 * 60 * 1000;
-
-    public long tokenExpiryTime;
-
-    private String jwtToken;          // The current JWT token for authorization
-    private long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
-
-    private final AmAuthService amAuthService;  // Service for handling OAuth2 authentication
-    private final URL avaticaUrl;               // URL of the Avatica server
+    private String jwtToken; // The current JWT token for authorization
+    long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
+    private final AmAuthService amAuthService; // Service for handling OAuth2 authentication
+    private final URL avaticaUrl; // URL of the Avatica server
 
     // OAuth2 parameters
     private final String oauthHost;
@@ -79,8 +75,8 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
     }
 
     /**
-     * Sends an HTTP request to the Avatica server. It generates or refreshes the JWT token if necessary,
-     * then attaches the token and instance ID in the request headers before sending the request.
+     * Sends an HTTP request to the Avatica server. It generates or refreshes the JWT token if necessary, then attaches the token and
+     * instance ID in the request headers before sending the request.
      *
      * @param request The HTTP request body as a byte array.
      * @return The response from the server as a byte array.
@@ -171,6 +167,7 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
         LOG.debug("Refreshing JWT token.");
         Map<String, String> tokenResponse = amAuthService.getAMAccessToken(oauthHost, clientId, clientSecret, instanceId);
         jwtToken = tokenResponse.get("access_token");
-        tokenExpiryTimeMs = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000);  // Set new expiration time
+        tokenExpiryTimeMs = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000); // Set new expiration
+                                                                                                                   // time
     }
 }
