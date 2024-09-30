@@ -66,6 +66,9 @@ public class CIPAvaticaHttpClientTest {
         when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
                         .thenReturn(tokenResponse);
 
+        // Mock the response code from the server
+        when(mockConnection.getResponseCode()).thenReturn(200);
+
         // Mock the response from the server (the response body for testing)
         when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream("response".getBytes()));
 
@@ -82,7 +85,7 @@ public class CIPAvaticaHttpClientTest {
     @Test
     public void testSend_TokenRefreshedBeforeExpiry() throws Exception {
         // Set token expiry time to be close to the current time, so it will trigger a refresh
-        client.tokenExpiryTime = System.currentTimeMillis() + 1 * 1000; // 1 second until expiry
+        client.tokenExpiryTimeMs = System.currentTimeMillis() + 1 * 1000; // 1 second until expiry
 
         // Prepare a mock token response from the authentication service
         Map<String, String> tokenResponse = new HashMap<>();
@@ -91,6 +94,9 @@ public class CIPAvaticaHttpClientTest {
 
         when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
                         .thenReturn(tokenResponse);
+
+        // Mock the response code from the server
+        when(mockConnection.getResponseCode()).thenReturn(200);
 
         // Mock the response from the server (the response body for testing)
         when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream("response".getBytes()));
@@ -131,7 +137,10 @@ public class CIPAvaticaHttpClientTest {
         when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
                         .thenReturn(tokenResponse);
 
-        // Simulate an IOException when sending the request
+        // Mock the response code from the server to simulate the request execution
+        when(mockConnection.getResponseCode()).thenReturn(200);
+
+        // Simulate an IOException when trying to send the request
         when(mockConnection.getOutputStream()).thenThrow(new IOException("Failed to send request"));
 
         // Expect a RuntimeException to be thrown due to the IOException
@@ -140,7 +149,7 @@ public class CIPAvaticaHttpClientTest {
             fail("Expected RuntimeException due to IOException");
         } catch (RuntimeException e) {
             // Assert that the exception message contains the correct information
-            assertTrue(e.getMessage().contains("Error sending request to Avatica server"));
+            assertTrue(e.getMessage().contains("Failed to send request"));
         }
     }
 }
