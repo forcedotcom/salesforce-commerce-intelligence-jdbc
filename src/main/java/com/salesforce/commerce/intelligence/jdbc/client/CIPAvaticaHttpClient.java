@@ -1,19 +1,20 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
-import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
-import org.apache.calcite.avatica.AvaticaUtils;
-import org.apache.calcite.avatica.remote.AvaticaHttpClientImpl;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
+
+import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
+import org.apache.calcite.avatica.AvaticaUtils;
+import org.apache.calcite.avatica.remote.AvaticaHttpClientImpl;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication. It manages the lifecycle of a token, including
@@ -119,6 +120,13 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                     continue;  // Retry on 503 response
                 }
 
+                // Handle 4xx errors explicitly and capture error details
+                if (responseCode >= 400 && responseCode < 500) {
+                    String errorMessage = readErrorResponse(connection);
+                    LOG.error("Received client error (4xx): HTTP {}. Error: {}", responseCode, errorMessage);
+                    throw new RuntimeException("Client error occurred: HTTP " + responseCode + ". Error message: " + errorMessage);
+                }
+
                 // Read response
                 InputStream responseStream = (responseCode == 200) ?
                                 connection.getInputStream() :
@@ -133,6 +141,23 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
             } catch (IOException e) {
                 LOG.error("Error sending request to Avatica server.", e);
                 throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Reads the error response from the server's error stream.
+     *
+     * @param connection The HTTP connection
+     * @return The error message from the server's response
+     * @throws IOException if an I/O error occurs
+     */
+    private String readErrorResponse(HttpURLConnection connection) throws IOException {
+        try (InputStream errorStream = connection.getErrorStream()) {
+            if (errorStream != null) {
+                return new String(AvaticaUtils.readFullyToBytes(errorStream), StandardCharsets.UTF_8);
+            } else {
+                return "No error message returned from the server.";
             }
         }
     }
