@@ -25,6 +25,8 @@ public class CIPAvaticaHttpClientTest {
     private URL mockUrl;
     private HttpURLConnection mockConnection;
 
+    private static final String ERROR_MESSAGE = "Unauthorized access";
+
     @Before
     public void setUp() throws Exception {
         // Mock the URL
@@ -150,6 +152,44 @@ public class CIPAvaticaHttpClientTest {
         } catch (RuntimeException e) {
             // Assert that the exception message contains the correct information
             assertTrue(e.getMessage().contains("Failed to send request"));
+        }
+    }
+
+    @Test
+    public void testSend_403UnauthorizedError() throws Exception {
+        // Mock the auth service to provide a sample token
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "sample-token");
+        tokenResponse.put("expires_in", "3600");
+
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
+                        .thenReturn(tokenResponse);
+
+        // Simulate a 403 Unauthorized response from the server
+        when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_FORBIDDEN);
+        when(mockConnection.getErrorStream()).thenReturn(new ByteArrayInputStream(ERROR_MESSAGE.getBytes()));
+
+        try {
+            client.send("request-payload".getBytes());
+            fail("Expected RuntimeException due to 403 Unauthorized error");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("Client error occurred: HTTP 403"));
+            assertTrue(e.getMessage().contains(ERROR_MESSAGE));
+        }
+    }
+
+
+    @Test
+    public void testSend_MissingToken() throws Exception {
+        // Simulate failure to refresh token by throwing an exception in refreshToken
+        doThrow(new SQLException("Failed to refresh token due to missing credentials"))
+                        .when(mockAuthService).getAMAccessToken(anyString(), anyString(), anyString(), anyString());
+
+        try {
+            client.send("request-payload".getBytes());
+            fail("Expected RuntimeException due to missing token");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("Failed to generate or refresh JWT token"));
         }
     }
 }
