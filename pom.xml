@@ -2,9 +2,9 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.salesforce.cip</groupId>
+  <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.3</version>
+  <version>0.1.4</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
@@ -37,7 +37,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Driver-Class>org.cip.CIPDriver</Driver-Class>
+                            <Driver-Class>com.salesforce.commerce.intelligence.jdbc.client.CIPDriver</Driver-Class>
                         </manifestEntries>
                     </archive>
                 </configuration>
@@ -239,6 +239,17 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- logging dependency -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.20.0</version>
+        </dependency>
 
 
     </dependencies>
