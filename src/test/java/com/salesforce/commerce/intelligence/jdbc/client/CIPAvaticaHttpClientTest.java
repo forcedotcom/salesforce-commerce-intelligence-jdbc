@@ -178,12 +178,11 @@ public class CIPAvaticaHttpClientTest {
         }
     }
 
-
     @Test
     public void testSend_MissingToken() throws Exception {
         // Simulate failure to refresh token by throwing an exception in refreshToken
-        doThrow(new SQLException("Failed to refresh token due to missing credentials"))
-                        .when(mockAuthService).getAMAccessToken(anyString(), anyString(), anyString(), anyString());
+        doThrow(new SQLException("Failed to refresh token due to missing credentials")).when(mockAuthService).getAMAccessToken(anyString(),
+                anyString(), anyString(), anyString());
 
         try {
             client.send("request-payload".getBytes());
