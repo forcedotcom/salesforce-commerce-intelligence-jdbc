@@ -1,7 +1,14 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,18 +21,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
+import org.apache.calcite.avatica.remote.ProtobufTranslation;
+import org.apache.calcite.avatica.remote.Service;
+import org.junit.Before;
+import org.junit.Test;
 
 public class CIPAvaticaHttpClientTest {
 
     private CIPAvaticaHttpClient client;
     private AmAuthService mockAuthService;
+
+    private ProtobufTranslation mockProtobufTranslation;
     private URL mockUrl;
     private HttpURLConnection mockConnection;
-
     private static final String ERROR_MESSAGE = "Unauthorized access";
+    private static final String EXPECTED_CONNECTION_ID = "mock-connection-id";
 
     @Before
     public void setUp() throws Exception {
@@ -43,6 +54,15 @@ public class CIPAvaticaHttpClientTest {
         // Mock the AmAuthService
         mockAuthService = mock(AmAuthService.class);
 
+        // Mock the ProtobufTranslation
+        mockProtobufTranslation = mock(ProtobufTranslation.class);
+
+        // Create a real OpenConnectionRequest with a fixed connectionId
+        Service.OpenConnectionRequest realRequest = new Service.OpenConnectionRequest(EXPECTED_CONNECTION_ID, null);
+
+        // Simulate parsing request to return the real request
+        when(mockProtobufTranslation.parseRequest(any())).thenReturn(realRequest);
+
         // Set mock properties
         Properties properties = new Properties();
         properties.put("amOauthHost", "mock-host");
@@ -55,7 +75,7 @@ public class CIPAvaticaHttpClientTest {
         CIPDriver.connectionProperties.set(properties);
 
         // Initialize the client with the mocked AmAuthService
-        client = new CIPAvaticaHttpClient(mockUrl, mockAuthService);
+        client = new CIPAvaticaHttpClient(mockUrl, mockAuthService, mockProtobufTranslation);
     }
 
     @Test
@@ -74,6 +94,7 @@ public class CIPAvaticaHttpClientTest {
         // Mock the response from the server (the response body for testing)
         when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream("response".getBytes()));
 
+
         // Call send with a mock request payload
         byte[] response = client.send("request-payload".getBytes());
 
@@ -82,6 +103,9 @@ public class CIPAvaticaHttpClientTest {
 
         // Assert the response from the server is handled correctly
         assertEquals("response", new String(response));
+
+        // Verify that the correct connection ID was set in the header
+        verify(mockConnection).setRequestProperty("X-Connection-ID", EXPECTED_CONNECTION_ID);
     }
 
     @Test

@@ -13,6 +13,9 @@ import java.util.Properties;
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
 import org.apache.calcite.avatica.AvaticaUtils;
 import org.apache.calcite.avatica.remote.AvaticaHttpClientImpl;
+import org.apache.calcite.avatica.remote.ProtobufTranslation;
+import org.apache.calcite.avatica.remote.ProtobufTranslationImpl;
+import org.apache.calcite.avatica.remote.Service;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,6 +31,7 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
     private String jwtToken; // The current JWT token for authorization
     long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
     private final AmAuthService amAuthService; // Service for handling OAuth2 authentication
+    private final ProtobufTranslation pbTranslation;
     private final URL avaticaUrl; // URL of the Avatica server
 
     // OAuth2 parameters
@@ -47,6 +51,7 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
         super(url);
         this.avaticaUrl = url;
         this.amAuthService = new AmAuthService();
+        this.pbTranslation = new ProtobufTranslationImpl();
 
         // Retrieve OAuth2 parameters from connection properties
         Properties connectionProps = CIPDriver.connectionProperties.get();
@@ -62,10 +67,11 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
      * @param url The URL of the Avatica server.
      * @param amAuthService The authentication service used to get and refresh tokens.
      */
-    public CIPAvaticaHttpClient(URL url, AmAuthService amAuthService) {
+    public CIPAvaticaHttpClient(URL url, AmAuthService amAuthService, ProtobufTranslation pbTranslation) {
         super(url);
         this.avaticaUrl = url;
         this.amAuthService = amAuthService;
+        this.pbTranslation = pbTranslation;
 
         // Retrieve OAuth2 parameters from connection properties
         Properties connectionProps = CIPDriver.connectionProperties.get();
@@ -85,6 +91,26 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
     @Override
     public byte[] send(byte[] request) {
         LOG.debug("Sending request to Avatica server.");
+
+        Service.Request genericReq;
+        try
+        {
+            genericReq = pbTranslation.parseRequest(request);
+        }
+        catch ( IOException e )
+        {
+            LOG.error( "Exception when extracting connection Id:", e );
+            throw new RuntimeException( e );
+        }
+
+        // Attempt to extract connectionId dynamically
+        //
+        String connectionId = extractConnectionId(genericReq);
+        if (connectionId != null) {
+            LOG.debug("Extracted Connection ID: {}", connectionId);
+        } else {
+            LOG.warn("Unable to extract Connection ID for request type: {}", genericReq.getClass().getSimpleName());
+        }
 
         // Check if the JWT token needs to be generated or refreshed
         if (isTokenExpiredOrMissing()) {
@@ -107,6 +133,7 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Authorization", "Bearer " + jwtToken);  // Attach JWT token
                 connection.setRequestProperty("InstanceId", instanceId);  // Attach InstanceId header
+                connection.setRequestProperty("X-Connection-ID", connectionId); //Attach connectionId for the stickiness
 
                 // Send the request payload
                 try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
@@ -192,7 +219,25 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
         LOG.debug("Refreshing JWT token.");
         Map<String, String> tokenResponse = amAuthService.getAMAccessToken(oauthHost, clientId, clientSecret, instanceId);
         jwtToken = tokenResponse.get("access_token");
-        tokenExpiryTimeMs = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000); // Set new expiration
+        tokenExpiryTimeMs = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000); // Set new expiration //
                                                                                                                    // time
+    }
+
+    /**
+     * Dynamically extracts the connectionId field from any Service.Request type.
+     *
+     * @param request The Service.Request object.
+     * @return The connectionId if present, or null otherwise.
+     */
+    String extractConnectionId( Service.Request request ) {
+        try {
+            // Use reflection to find "connectionId" field
+            java.lang.reflect.Field connectionIdField = request.getClass().getDeclaredField("connectionId");
+            connectionIdField.setAccessible(true);
+            return (String) connectionIdField.get(request);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            LOG.debug("Request type {} does not have a connectionId field", request.getClass().getSimpleName());
+        }
+        return null;
     }
 }
