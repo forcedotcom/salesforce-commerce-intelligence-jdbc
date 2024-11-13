@@ -166,8 +166,8 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                 return AvaticaUtils.readFullyToBytes(responseStream);
 
             } catch (IOException e) {
-                LOG.error("Error sending request to Avatica server.", e);
-                throw new RuntimeException(e);
+                LOG.error("Error sending request to Avatica server. Connection ID: {}", connectionId, e);
+                throw new RuntimeException("Error sending request to Avatica server. Connection ID: " + connectionId, e);
             }
         }
     }
