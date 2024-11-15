@@ -38,6 +38,12 @@ public class CIPAvaticaHttpClientTest {
     private static final String ERROR_MESSAGE = "Unauthorized access";
     private static final String EXPECTED_CONNECTION_ID = "mock-connection-id";
 
+    private static final String MOCK_SESSION_ID = "mock-session-id";
+    private static final String CONNECTION_ID = "mock-connection-id";
+
+    private static final String MOCK_REQUEST_PAYLOAD = "request-payload";
+    private static final String MOCK_RESPONSE_PAYLOAD = "response";
+
     @Before
     public void setUp() throws Exception {
         // Mock the URL
@@ -103,9 +109,36 @@ public class CIPAvaticaHttpClientTest {
 
         // Assert the response from the server is handled correctly
         assertEquals("response", new String(response));
+    }
 
-        // Verify that the correct connection ID was set in the header
-        verify(mockConnection).setRequestProperty("X-Connection-ID", EXPECTED_CONNECTION_ID);
+    @Test
+    public void testSend_SessionIdHandling() throws Exception {
+
+        // Prepare a mock token response from the authentication service
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
+                        .thenReturn(tokenResponse);
+
+        // Simulate sessionStore behavior for session ID
+        CIPAvaticaHttpClient.sessionStore.put(CONNECTION_ID, MOCK_SESSION_ID);
+
+        // Mock response code and session header
+        when(mockConnection.getResponseCode()).thenReturn(200);
+        when(mockConnection.getHeaderField("x-session-id")).thenReturn(MOCK_SESSION_ID);
+        when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(MOCK_RESPONSE_PAYLOAD.getBytes()));
+
+        // Call send method
+        byte[] response = client.send(MOCK_REQUEST_PAYLOAD.getBytes());
+
+        // Verify session ID sent in request
+        verify(mockConnection).setRequestProperty("x-session-id", MOCK_SESSION_ID);
+        assertEquals(MOCK_RESPONSE_PAYLOAD, new String(response));
+
+        // Validate sessionStore update
+        assertEquals(MOCK_SESSION_ID, CIPAvaticaHttpClient.sessionStore.get(CONNECTION_ID));
     }
 
     @Test
