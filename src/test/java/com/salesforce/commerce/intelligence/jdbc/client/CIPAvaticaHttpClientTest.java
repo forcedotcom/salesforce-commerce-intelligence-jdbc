@@ -175,7 +175,7 @@ public class CIPAvaticaHttpClientTest {
             fail("Expected RuntimeException due to IOException");
         } catch (RuntimeException e) {
             // Assert that the exception message contains the correct information
-            assertTrue(e.getMessage().contains("Failed to send request"));
+            assertTrue(e.getMessage().contains("Error sending request to Avatica server. Connection ID: mock-connection-id"));
         }
     }
 

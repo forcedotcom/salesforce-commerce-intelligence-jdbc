@@ -150,8 +150,10 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                 // Handle 4xx errors explicitly and capture error details
                 if (responseCode >= 400 && responseCode < 500) {
                     String errorMessage = readErrorResponse(connection);
-                    LOG.error("Received client error (4xx): HTTP {}. Error: {}", responseCode, errorMessage);
-                    throw new RuntimeException("Client error occurred: HTTP " + responseCode + ". Error message: " + errorMessage);
+                    LOG.error("Received client error (4xx): HTTP {}. Connection ID: {}. Error: {}", responseCode, connectionId, errorMessage);
+                    throw new RuntimeException(
+                                    String.format("Client error occurred: HTTP %d. Connection ID: %s. Error message: %s",
+                                                    responseCode, connectionId, errorMessage));
                 }
 
                 // Read response
@@ -166,8 +168,8 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                 return AvaticaUtils.readFullyToBytes(responseStream);
 
             } catch (IOException e) {
-                LOG.error("Error sending request to Avatica server.", e);
-                throw new RuntimeException(e);
+                LOG.error("Error sending request to Avatica server. Connection ID: {}", connectionId, e);
+                throw new RuntimeException("Error sending request to Avatica server. Connection ID: " + connectionId, e);
             }
         }
     }
