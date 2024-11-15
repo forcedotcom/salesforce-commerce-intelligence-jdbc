@@ -1,7 +1,14 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,18 +21,28 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
+import org.apache.calcite.avatica.remote.ProtobufTranslation;
+import org.apache.calcite.avatica.remote.Service;
+import org.junit.Before;
+import org.junit.Test;
 
 public class CIPAvaticaHttpClientTest {
 
     private CIPAvaticaHttpClient client;
     private AmAuthService mockAuthService;
+
+    private ProtobufTranslation mockProtobufTranslation;
     private URL mockUrl;
     private HttpURLConnection mockConnection;
-
     private static final String ERROR_MESSAGE = "Unauthorized access";
+    private static final String EXPECTED_CONNECTION_ID = "mock-connection-id";
+
+    private static final String MOCK_SESSION_ID = "mock-session-id";
+    private static final String CONNECTION_ID = "mock-connection-id";
+
+    private static final String MOCK_REQUEST_PAYLOAD = "request-payload";
+    private static final String MOCK_RESPONSE_PAYLOAD = "response";
 
     @Before
     public void setUp() throws Exception {
@@ -43,6 +60,15 @@ public class CIPAvaticaHttpClientTest {
         // Mock the AmAuthService
         mockAuthService = mock(AmAuthService.class);
 
+        // Mock the ProtobufTranslation
+        mockProtobufTranslation = mock(ProtobufTranslation.class);
+
+        // Create a real OpenConnectionRequest with a fixed connectionId
+        Service.OpenConnectionRequest realRequest = new Service.OpenConnectionRequest(EXPECTED_CONNECTION_ID, null);
+
+        // Simulate parsing request to return the real request
+        when(mockProtobufTranslation.parseRequest(any())).thenReturn(realRequest);
+
         // Set mock properties
         Properties properties = new Properties();
         properties.put("amOauthHost", "mock-host");
@@ -55,7 +81,7 @@ public class CIPAvaticaHttpClientTest {
         CIPDriver.connectionProperties.set(properties);
 
         // Initialize the client with the mocked AmAuthService
-        client = new CIPAvaticaHttpClient(mockUrl, mockAuthService);
+        client = new CIPAvaticaHttpClient(mockUrl, mockAuthService, mockProtobufTranslation);
     }
 
     @Test
@@ -74,6 +100,7 @@ public class CIPAvaticaHttpClientTest {
         // Mock the response from the server (the response body for testing)
         when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream("response".getBytes()));
 
+
         // Call send with a mock request payload
         byte[] response = client.send("request-payload".getBytes());
 
@@ -82,6 +109,36 @@ public class CIPAvaticaHttpClientTest {
 
         // Assert the response from the server is handled correctly
         assertEquals("response", new String(response));
+    }
+
+    @Test
+    public void testSend_SessionIdHandling() throws Exception {
+
+        // Prepare a mock token response from the authentication service
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString()))
+                        .thenReturn(tokenResponse);
+
+        // Simulate sessionStore behavior for session ID
+        CIPAvaticaHttpClient.sessionStore.put(CONNECTION_ID, MOCK_SESSION_ID);
+
+        // Mock response code and session header
+        when(mockConnection.getResponseCode()).thenReturn(200);
+        when(mockConnection.getHeaderField("x-session-id")).thenReturn(MOCK_SESSION_ID);
+        when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(MOCK_RESPONSE_PAYLOAD.getBytes()));
+
+        // Call send method
+        byte[] response = client.send(MOCK_REQUEST_PAYLOAD.getBytes());
+
+        // Verify session ID sent in request
+        verify(mockConnection).setRequestProperty("x-session-id", MOCK_SESSION_ID);
+        assertEquals(MOCK_RESPONSE_PAYLOAD, new String(response));
+
+        // Validate sessionStore update
+        assertEquals(MOCK_SESSION_ID, CIPAvaticaHttpClient.sessionStore.get(CONNECTION_ID));
     }
 
     @Test
@@ -151,7 +208,7 @@ public class CIPAvaticaHttpClientTest {
             fail("Expected RuntimeException due to IOException");
         } catch (RuntimeException e) {
             // Assert that the exception message contains the correct information
-            assertTrue(e.getMessage().contains("Failed to send request"));
+            assertTrue(e.getMessage().contains("Error sending request to Avatica server. Connection ID: mock-connection-id"));
         }
     }
 
