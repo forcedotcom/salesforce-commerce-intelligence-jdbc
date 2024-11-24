@@ -35,6 +35,12 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication. It manages the lifecycle of a token, including
+ * generating the token when needed, refreshing it before expiry, and injecting the Authorization header into every request sent to the
+ * Avatica server.
+ */
+
 public class CIPAvaticaHttpClient
                 implements AvaticaHttpClient, HttpClientPoolConfigurable
 {
