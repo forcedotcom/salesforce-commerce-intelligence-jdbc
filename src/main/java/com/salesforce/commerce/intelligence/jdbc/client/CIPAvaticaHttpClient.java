@@ -1,22 +1,40 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
-import org.apache.calcite.avatica.AvaticaUtils;
-import org.apache.calcite.avatica.remote.AvaticaHttpClientImpl;
+import org.apache.calcite.avatica.ConnectionConfig;
+import org.apache.calcite.avatica.remote.AvaticaHttpClient;
+import org.apache.calcite.avatica.remote.HttpClientPoolConfigurable;
 import org.apache.calcite.avatica.remote.ProtobufTranslation;
 import org.apache.calcite.avatica.remote.ProtobufTranslationImpl;
 import org.apache.calcite.avatica.remote.Service;
+import org.apache.hc.client5.http.ClientProtocolException;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.NoHttpResponseException;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,15 +43,18 @@ import org.apache.logging.log4j.Logger;
  * generating the token when needed, refreshing it before expiry, and injecting the Authorization header into every request sent to the
  * Avatica server.
  */
-public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
 
+public class CIPAvaticaHttpClient
+                implements AvaticaHttpClient, HttpClientPoolConfigurable
+{
     // Refresh the token 5 minutes before expiry
     private static final long TOKEN_EXPIRY_THRESHOLD_MS = 5 * 60 * 1000;
+
+    private static final String HEADER_SESSION_ID = "x-session-id";
     private String jwtToken; // The current JWT token for authorization
     long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
     private final AmAuthService amAuthService; // Service for handling OAuth2 authentication
     private final ProtobufTranslation pbTranslation;
-    private final URL avaticaUrl; // URL of the Avatica server
 
     // OAuth2 parameters
     private final String oauthHost;
@@ -41,7 +62,7 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
     private final String clientSecret;
     private final String instanceId;
 
-    private static final Logger LOG = LogManager.getLogger(CIPAvaticaHttpClient.class);
+    private static final Logger LOG = LogManager.getLogger( CIPAvaticaHttpClient.class);
 
     // Thread-safe store for session IDs associated with each connection
     // --------------------------------------------------------------------
@@ -61,15 +82,14 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
     // by the load balancer (for instance, using Istio or other session-aware
     // routing systems).
     static final ConcurrentHashMap<String, String> sessionStore = new ConcurrentHashMap<>();
+    protected final URI uri; // uri of avatica server
 
-    /**
-     * Constructor for CIPAvaticaHttpClient that initializes OAuth2 parameters from the connection properties.
-     *
-     * @param url The URL of the Avatica server.
-     */
-    public CIPAvaticaHttpClient(URL url) {
-        super(url);
-        this.avaticaUrl = url;
+    protected CloseableHttpClient client;
+
+    protected HttpClientContext context;
+
+    public CIPAvaticaHttpClient( URL url) {
+        this.uri = toURI((URL)Objects.requireNonNull(url));
         this.amAuthService = new AmAuthService();
         this.pbTranslation = new ProtobufTranslationImpl();
 
@@ -87,9 +107,8 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
      * @param url The URL of the Avatica server.
      * @param amAuthService The authentication service used to get and refresh tokens.
      */
-    public CIPAvaticaHttpClient(URL url, AmAuthService amAuthService, ProtobufTranslation pbTranslation) {
-        super(url);
-        this.avaticaUrl = url;
+    public CIPAvaticaHttpClient( URL url, AmAuthService amAuthService, ProtobufTranslation pbTranslation) {
+        this.uri = toURI((URL)Objects.requireNonNull(url));
         this.amAuthService = amAuthService;
         this.pbTranslation = pbTranslation;
 
@@ -101,15 +120,16 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
         this.instanceId = connectionProps.getProperty("instanceId");
     }
 
-    /**
-     * Sends an HTTP request to the Avatica server. It generates or refreshes the JWT token if necessary, then attaches the token and
-     * instance ID in the request headers before sending the request.
-     *
-     * @param request The HTTP request body as a byte array.
-     * @return The response from the server as a byte array.
-     */
-    @Override
+    protected void initializeClient(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
+        RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
+        RequestConfig requestConfig = requestConfigBuilder.setConnectTimeout(config.getHttpConnectionTimeout(), TimeUnit.MILLISECONDS).setResponseTimeout( config.getHttpResponseTimeout(), TimeUnit.MILLISECONDS ).build();
+        HttpClientBuilder httpClientBuilder = HttpClients.custom().setConnectionManager(pool).setDefaultRequestConfig(requestConfig);
+        this.context = HttpClientContext.create();
+        this.client = httpClientBuilder.build();
+    }
+
     public byte[] send(byte[] request) {
+
         LOG.debug("Sending request to Avatica server.");
 
         Service.Request genericReq;
@@ -140,101 +160,122 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
                 LOG.debug("Refreshing JWT token.");
                 refreshToken();
                 LOG.debug("JWT token refreshed.");
-            } catch (SQLException e) {
+            } catch ( SQLException e) {
                 LOG.error("Failed to generate or refresh JWT token.", e);
                 throw new RuntimeException("Failed to generate or refresh JWT token.", e);
             }
         }
 
-        // Retry mechanism to handle HTTP 503 responses (if needed)
-        while (true) {
+
+
+        while(true) {
+            HttpClientContext context = HttpClientContext.create();
+
+            HttpPost post = getHttpPost( request, sessionId );
+
             try {
-                HttpURLConnection connection = openConnection();
-                connection.setRequestMethod("POST");
-                connection.setDoInput(true);
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Authorization", "Bearer " + jwtToken);  // Attach JWT token
-                connection.setRequestProperty("InstanceId", instanceId);  // Attach InstanceId header
+                CloseableHttpResponse response = this.execute(post, context);
+                Throwable throwable = null;
 
-                // following is not used for now, we are using session id generated by istio instead
-                //connection.setRequestProperty("X-Connection-ID", connectionId); //Attach connectionId for the stickiness
+                byte[] bytes = new byte[0];
+                try {
+                    int statusCode = response.getCode();
+                    if (200 != statusCode && 500 != statusCode) {
+                        if (503 == statusCode) {
+                            LOG.warn("Failed to connect to server (HTTP/503), retrying");
+                            continue;
+                        }
+                        LOG.error("HTTP request failed with status code {}: {}", statusCode, response.getReasonPhrase());
+                        throw new RuntimeException(String.format("HTTP request failed with status code %d: %s", statusCode, response.getReasonPhrase()));
+                    }
 
-                // Attach session ID if available
-                if (sessionId != null) {
-                    connection.setRequestProperty("x-session-id", sessionId);
+                    if( statusCode == HttpURLConnection.HTTP_OK )
+                    {
+                        Header sessionHeader = response.getHeader( HEADER_SESSION_ID );
+                        String newSessionId = ( sessionHeader != null ) ? sessionHeader.getValue() : null;
+
+                        if ( newSessionId != null )
+                        {
+                            LOG.debug( "Captured new session ID: {}", newSessionId );
+                            sessionStore.put( connectionId, newSessionId );
+                        }
+                        else
+                        {
+                            LOG.warn( "Session ID not provided in response for connection ID: {}", connectionId );
+                        }
+                        bytes = EntityUtils.toByteArray(response.getEntity());
+                    }
+                    else if (statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
+                        // Log the error response for debugging
+                        if (response.getEntity() != null) {
+                            String errorMessage = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                            LOG.error("Received 500 Internal Server Error: {}", errorMessage);
+                        } else {
+                            LOG.error("Received 500 Internal Server Error with no response body.");
+                        }
+
+                        // Throw a runtime exception with relevant error details
+                        throw new RuntimeException("Server returned HTTP 500: Internal Server Error");
+                    }
+                } catch (Throwable throwable1) {
+                    throwable = throwable1;
+                    throw throwable1;
+                } finally {
+                    if (response != null) {
+                        if (throwable != null) {
+                            try {
+                                response.close();
+                            } catch (Throwable var20) {
+                                throwable.addSuppressed(var20);
+                            }
+                        } else {
+                            response.close();
+                        }
+                    }
+
                 }
 
-                // Send the request payload
-                try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
-                    outputStream.write(request);
-                    outputStream.flush();
-                }
-
-                int responseCode = connection.getResponseCode();
-                if (responseCode == 503) {
-                    LOG.warn("Received 503 Service Unavailable. Retrying...");
-                    continue;  // Retry on 503 response
-                }
-
-                // Handle 4xx errors explicitly and capture error details
-                if (responseCode >= 400 && responseCode < 500) {
-                    String errorMessage = readErrorResponse(connection);
-                    LOG.error("Received client error (4xx): HTTP {}. Connection ID: {}. Error: {}", responseCode, connectionId, errorMessage);
-                    throw new RuntimeException(
-                                    String.format("Client error occurred: HTTP %d. Connection ID: %s. Error message: %s",
-                                                    responseCode, connectionId, errorMessage));
-                }
-
-                // Capture session ID from response if available
-                String newSessionId = connection.getHeaderField("x-session-id");
-                if (newSessionId != null) {
-                    sessionStore.put(connectionId, newSessionId);
-                    LOG.debug("Captured new session ID: {}", newSessionId);
-                }
-
-                // Read response
-                InputStream responseStream = (responseCode == 200) ?
-                                connection.getInputStream() :
-                                connection.getErrorStream();
-
-                if (responseStream == null) {
-                    throw new RuntimeException("Failed to read data from the server: HTTP " + responseCode);
-                }
-
-                return AvaticaUtils.readFullyToBytes(responseStream);
-
-            } catch (IOException e) {
-                LOG.error("Error sending request to Avatica server. Connection ID: {}", connectionId, e);
-                throw new RuntimeException("Error sending request to Avatica server. Connection ID: " + connectionId, e);
+                return bytes;
+            } catch (NoHttpResponseException var23) {
+                LOG.debug("The Avatica server failed to issue an HTTP response, retrying");
+            } catch (RuntimeException var24) {
+                throw var24;
+            } catch (Exception exception) {
+                LOG.debug("Failed to execute HTTP request", exception);
+                throw new RuntimeException(exception);
             }
         }
     }
 
-    /**
-     * Reads the error response from the server's error stream.
-     *
-     * @param connection The HTTP connection
-     * @return The error message from the server's response
-     * @throws IOException if an I/O error occurs
-     */
-    private String readErrorResponse(HttpURLConnection connection) throws IOException {
-        try (InputStream errorStream = connection.getErrorStream()) {
-            if (errorStream != null) {
-                return new String(AvaticaUtils.readFullyToBytes(errorStream), StandardCharsets.UTF_8);
-            } else {
-                return "No error message returned from the server.";
-            }
+    HttpPost getHttpPost( byte[] request, String sessionId )
+    {
+        ByteArrayEntity entity = new ByteArrayEntity( request, ContentType.APPLICATION_OCTET_STREAM);
+        HttpPost post = new HttpPost(this.uri);
+        post.setEntity(entity);
+        post.setHeader("Authorization", "Bearer " + jwtToken);  // Attach JWT token
+        post.setHeader("InstanceId", instanceId);  // Attach InstanceId header
+
+        // Attach session ID if available
+        if ( sessionId != null) {
+            post.setHeader(HEADER_SESSION_ID, sessionId );
+        }
+        return post;
+    }
+
+    CloseableHttpResponse execute(HttpPost post, HttpClientContext context) throws IOException, ClientProtocolException {
+        return this.client.execute(post, context);
+    }
+
+    private static URI toURI(URL url) throws RuntimeException {
+        try {
+            return url.toURI();
+        } catch (URISyntaxException var2) {
+            throw new RuntimeException(var2);
         }
     }
 
-    /**
-     * Opens an HTTP connection to the Avatica server.
-     *
-     * @return A configured HttpURLConnection object.
-     * @throws IOException If an error occurs while opening the connection.
-     */
-    private HttpURLConnection openConnection() throws IOException {
-        return (HttpURLConnection) avaticaUrl.openConnection();
+    public void setHttpClientPool(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
+        this.initializeClient(pool, config);
     }
 
     /**
@@ -258,24 +299,26 @@ public class CIPAvaticaHttpClient extends AvaticaHttpClientImpl {
         Map<String, String> tokenResponse = amAuthService.getAMAccessToken(oauthHost, clientId, clientSecret, instanceId);
         jwtToken = tokenResponse.get("access_token");
         tokenExpiryTimeMs = System.currentTimeMillis() + (Long.parseLong(tokenResponse.get("expires_in")) * 1000); // Set new expiration //
-                                                                                                                   // time
+        // time
     }
 
-    /**
-     * Dynamically extracts the connectionId field from any Service.Request type.
-     *
-     * @param request The Service.Request object.
-     * @return The connectionId if present, or null otherwise.
-     */
-    String extractConnectionId( Service.Request request ) {
+    String extractConnectionId(Service.Request request) {
         try {
-            // Use reflection to find "connectionId" field
-            java.lang.reflect.Field connectionIdField = request.getClass().getDeclaredField("connectionId");
+            if (request instanceof Service.ExecuteRequest) {
+                // Extract connectionId directly from statementHandle
+                return ((Service.ExecuteRequest) request).statementHandle.connectionId;
+            }
+
+            // Use reflection to find "connectionId" field for other request types
+            Field connectionIdField = request.getClass().getDeclaredField("connectionId");
             connectionIdField.setAccessible(true);
             return (String) connectionIdField.get(request);
+
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            LOG.debug("Request type {} does not have a connectionId field", request.getClass().getSimpleName());
+            LOG.debug("Unable to extract connectionId for request type {}. Error: {}",
+                            request.getClass().getSimpleName(), e.getMessage());
         }
         return null;
     }
 }
+
