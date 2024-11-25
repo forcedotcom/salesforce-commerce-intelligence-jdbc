@@ -120,6 +120,10 @@ public class CIPDriver extends Driver {
                     throw new SQLException( "Failed to convert PostgreSQL URL to Avatica URL." );
                 }
 
+                // Socket timeout (query timeout) in milliseconds for the connection between the Avatica HTTP client and server.
+                // The default is 3 minutes, but we are overriding it to 30 minutes.
+                String responseTimeout = info.getProperty( "responseTimeout" ) == null ? "1800000" : info.getProperty( "responseTimeout" );
+                info.setProperty(BuiltInConnectionProperty.HTTP_RESPONSE_TIMEOUT.camelName(), responseTimeout);
             }
 
             // Set PostgreSQL dialect for the connection
