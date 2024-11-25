@@ -1,9 +1,12 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
@@ -174,7 +177,7 @@ public class CIPAvaticaHttpClient
                 CloseableHttpResponse response = this.execute(post, context);
                 Throwable throwable = null;
 
-                byte[] bytes;
+                byte[] bytes = new byte[0];
                 try {
                     int statusCode = response.getCode();
                     if (200 != statusCode && 500 != statusCode) {
@@ -186,18 +189,34 @@ public class CIPAvaticaHttpClient
                         throw new RuntimeException(String.format("HTTP request failed with status code %d: %s", statusCode, response.getReasonPhrase()));
                     }
 
-                    Header sessionHeader = response.getHeader(HEADER_SESSION_ID);
-                    String newSessionId = (sessionHeader != null) ? sessionHeader.getValue() : null;
+                    if( statusCode == HttpURLConnection.HTTP_OK )
+                    {
+                        Header sessionHeader = response.getHeader( HEADER_SESSION_ID );
+                        String newSessionId = ( sessionHeader != null ) ? sessionHeader.getValue() : null;
 
-                    if (newSessionId != null) {
-                        LOG.debug("Captured new session ID: {}", newSessionId);
-                        sessionStore.put(connectionId, newSessionId);
-                    } else {
-                        LOG.warn("Session ID not provided in response for connection ID: {}", connectionId);
+                        if ( newSessionId != null )
+                        {
+                            LOG.debug( "Captured new session ID: {}", newSessionId );
+                            sessionStore.put( connectionId, newSessionId );
+                        }
+                        else
+                        {
+                            LOG.warn( "Session ID not provided in response for connection ID: {}", connectionId );
+                        }
+                        bytes = EntityUtils.toByteArray(response.getEntity());
                     }
+                    else if (statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
+                        // Log the error response for debugging
+                        if (response.getEntity() != null) {
+                            String errorMessage = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                            LOG.error("Received 500 Internal Server Error: {}", errorMessage);
+                        } else {
+                            LOG.error("Received 500 Internal Server Error with no response body.");
+                        }
 
-
-                    bytes = EntityUtils.toByteArray(response.getEntity());
+                        // Throw a runtime exception with relevant error details
+                        throw new RuntimeException("Server returned HTTP 500: Internal Server Error");
+                    }
                 } catch (Throwable throwable1) {
                     throwable = throwable1;
                     throw throwable1;
@@ -291,7 +310,7 @@ public class CIPAvaticaHttpClient
             }
 
             // Use reflection to find "connectionId" field for other request types
-            java.lang.reflect.Field connectionIdField = request.getClass().getDeclaredField("connectionId");
+            Field connectionIdField = request.getClass().getDeclaredField("connectionId");
             connectionIdField.setAccessible(true);
             return (String) connectionIdField.get(request);
 
