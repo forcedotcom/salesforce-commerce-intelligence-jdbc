@@ -1,8 +1,6 @@
-*This is a suggested `CONTRIBUTING.md` file template for use by open sourced Salesforce projects. The main goal of this file is to make clear the intents and expectations that end-users may have regarding this project and how/if to engage with it. Adjust as needed (especially look for `{project_slug}` which refers to the org and repo name of your project) and remove this paragraph before committing to your repo.*
+# Contributing Guide For Salesforce Commerce Intelligence JDBC Driver
 
-# Contributing Guide For {NAME OF PROJECT}
-
-This page lists the operational governance model of this project, as well as the recommendations and requirements for how to best contribute to {PROJECT}. We strive to obey these as best as possible. As always, thanks for contributing – we hope these guidelines make it easier and shed some light on our approach and processes.
+This page lists the operational governance model of this project, as well as the recommendations and requirements for how to best contribute to Salesforce Commerce Intelligence JDBC Driver Project. We strive to obey these as best as possible. As always, thanks for contributing – we hope these guidelines make it easier and shed some light on our approach and processes.
 
 # Governance Model
 > Pick the most appropriate one
@@ -32,7 +30,7 @@ Please join the community on {Here list Slack channels, Email lists, Glitter, Di
 Use GitHub Issues page to submit issues, enhancement requests and discuss ideas.
 
 ### Bug Reports and Fixes
--  If you find a bug, please search for it in the [Issues](https://github.com/{project_slug}/issues), and if it isn't already tracked,
+-  If you find a bug, please search for it in the [Issues](https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc/issues), and if it isn't already tracked,
    [create a new issue](https://github.com/{project_slug}/issues/new). Fill out the "Bug Report" section of the issue template. Even if an Issue is closed, feel free to comment and add details, it will still
    be reviewed.
 -  Issues that have already been identified as a bug (note: able to reproduce) will be labelled `bug`.
