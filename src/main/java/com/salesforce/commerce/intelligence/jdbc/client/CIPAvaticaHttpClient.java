@@ -207,15 +207,16 @@ public class CIPAvaticaHttpClient
                     }
                     else if (statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
                         // Log the error response for debugging
+                        String errorMessage = null;
                         if (response.getEntity() != null) {
-                            String errorMessage = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                            errorMessage = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
                             LOG.error("Received 500 Internal Server Error: {}", errorMessage);
                         } else {
                             LOG.error("Received 500 Internal Server Error with no response body.");
                         }
 
                         // Throw a runtime exception with relevant error details
-                        throw new RuntimeException("Server returned HTTP 500: Internal Server Error");
+                        throw new SQLException("Server responded with HTTP 500: Internal Server Error. Details: " + errorMessage);
                     }
                 } catch (Throwable throwable1) {
                     throwable = throwable1;
