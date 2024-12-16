@@ -207,14 +207,14 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
-            <version>5.3.9</version> <!-- Use the latest version or the specific version you need -->
+            <version>5.3.20</version> <!-- Use the latest version or the specific version you need -->
         </dependency>
 
         <!-- Spring Web Dependency (includes RestTemplate) -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
-            <version>5.3.9</version> <!-- Use the latest version or the specific version you need -->
+            <version>5.3.20</version> <!-- Use the latest version or the specific version you need -->
         </dependency>
 
         <!-- Needed for RestTemplate -->
