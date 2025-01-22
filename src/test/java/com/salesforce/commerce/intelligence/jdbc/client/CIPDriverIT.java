@@ -17,34 +17,29 @@ import org.junit.Test;
 
 /**
  * This test verifies if the CIPDriver is loading correctly and can communicate with the Account Manager to obtain an OAuth token. Note:
- * This test is requires that cip-service-dataconnector is running in QA env with instance bjmp_prd as dependencies otherwise tests won't work in Jenkins CI environments.
- * IMPORTANT:
- * // for testing against local cip-service-dataconnector set ssl value to false
- * // for testing against local cip-service-dataconnector set url as  "jdbc:salesforcecc://localhost:9787/bjnl_prd"
+ * This test is requires that cip-service-dataconnector is running in QA env with instance bjmp_prd as dependencies otherwise tests won't
+ * work in Jenkins CI environments. IMPORTANT: // for testing against local cip-service-dataconnector set ssl value to false // for testing
+ * against local cip-service-dataconnector set url as "jdbc:salesforcecc://localhost:9787/bjnl_prd"
  */
 
-
-//@Ignore
+// @Ignore
 public class CIPDriverIT {
 
     @Test
-    public void testCIPDriver()
-                    throws Exception
-    {
-        try
-        {
+    public void testCIPDriver() throws Exception {
+        try {
             Properties properties = new Properties();
-            properties.put( "ssl", "true" ); // for testing against local cip-service-dataconnector set ssl value to false
-            properties.put( "user", "fff01280-e3c3-43e5-8006-5ea1301f9c50" );
-            properties.put( "password", "Demandware1!" );
-            properties.put( "amOauthHost", "https://account-pod5.demandware.net" );
-            //properties.put( "enableLogging", "true" );
+            properties.put("ssl", "true"); // for testing against local cip-service-dataconnector set ssl value to false
+            properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c50");
+            properties.put("password", "Demandware1!");
+            properties.put("amOauthHost", "https://account-pod5.demandware.net");
+            // properties.put( "enableLogging", "true" );
 
-            Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
+            Class.forName("com.salesforce.commerce.intelligence.jdbc.client.CIPDriver");
 
-            // for local testing set url as  "jdbc:salesforcecc://localhost:9787/bjnl_prd"
-            Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd",
-                             properties );
+            // for local testing set url as "jdbc:salesforcecc://localhost:9787/bjnl_prd"
+            Connection conn = DriverManager.getConnection(
+                    "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
 
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT * from ccdw_dim_date LIMIT 5");
@@ -54,10 +49,8 @@ public class CIPDriverIT {
                 System.out.println(resultSet.getString(1));
             }
 
-            System.out.println( "Connection established: " + ( conn != null ) );
-        }
-        catch ( Exception e )
-        {
+            System.out.println("Connection established: " + (conn != null));
+        } catch (Exception e) {
             throw e;
         }
     }
