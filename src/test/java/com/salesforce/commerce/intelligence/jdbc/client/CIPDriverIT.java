@@ -17,47 +17,48 @@ import org.junit.Test;
 
 /**
  * This test verifies if the CIPDriver is loading correctly and can communicate with the Account Manager to obtain an OAuth token. Note:
- * This test is disabled by default as it requires external dependencies and won't work in Jenkins CI environments. However, it is useful
- * for local testing with authentication. To run this test locally, simply enable it by removing the appropriate annotations or comments.
+ * This test is requires that cip-service-dataconnector is running in QA env with instance bjmp_prd as dependencies otherwise tests won't work in Jenkins CI environments.
+ * IMPORTANT:
+ * // for testing against local cip-service-dataconnector set ssl value to false
+ * // for testing against local cip-service-dataconnector set url as  "jdbc:salesforcecc://localhost:9787/bjnl_prd"
  */
-@Ignore
+
+
+//@Ignore
 public class CIPDriverIT {
 
     @Test
     public void testCIPDriver()
+                    throws Exception
     {
         try
         {
-            Enumeration<java.sql.Driver> driverList = DriverManager.getDrivers();
-            while ( driverList.hasMoreElements() )
-            {
-                java.sql.Driver driver = driverList.nextElement();
-                System.out.println( "Driver: " + driver.getClass().getName() );
-            }
-
             Properties properties = new Properties();
-            properties.put( "ssl", "false" );
+            properties.put( "ssl", "true" ); // for testing against local cip-service-dataconnector set ssl value to false
             properties.put( "user", "fff01280-e3c3-43e5-8006-5ea1301f9c50" );
             properties.put( "password", "Demandware1!" );
             properties.put( "amOauthHost", "https://account-pod5.demandware.net" );
             //properties.put( "enableLogging", "true" );
 
             Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
-            Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://localhost:9787/bjnl_prd",
+
+            // for local testing set url as  "jdbc:salesforcecc://localhost:9787/bjnl_prd"
+            Connection conn = DriverManager.getConnection( "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd",
                              properties );
+
             Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT 1");
+            ResultSet resultSet = statement.executeQuery("SELECT * from ccdw_dim_date LIMIT 5");
 
             // Iterate through the results (if any) to ensure the query is processed
             while (resultSet.next()) {
-                System.out.println(resultSet.getInt(1));
+                System.out.println(resultSet.getString(1));
             }
 
             System.out.println( "Connection established: " + ( conn != null ) );
         }
-        catch ( ClassNotFoundException | SQLException e )
+        catch ( Exception e )
         {
-            e.printStackTrace();
+            throw e;
         }
     }
 
@@ -67,7 +68,7 @@ public class CIPDriverIT {
     @Test
     public void testCIPDriver_401_test() {
         Properties properties = new Properties();
-        properties.put("ssl", "false");
+        properties.put("ssl", "true");
         // Incorrect client ID, expecting 401 error
         properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c5");
         properties.put("password", "Demandware1!");
@@ -78,13 +79,13 @@ public class CIPDriverIT {
             Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
 
             // Attempt to establish a connection with incorrect credentials
-            Connection conn = DriverManager.getConnection("jdbc:salesforcecc://localhost:9787/bjnl_prd", properties);
+            Connection conn = DriverManager.getConnection("jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT 1");
 
             // Iterate through the results (if any) to ensure the query is processed
             while (resultSet.next()) {
-                System.out.println(resultSet.getInt(1));
+                System.out.println(resultSet.getString(1));
             }
         });
 
@@ -102,7 +103,7 @@ public class CIPDriverIT {
     @Test
     public void testCIPDriver_400_test() {
         Properties properties = new Properties();
-        properties.put("ssl", "false");
+        properties.put("ssl", "true");
         properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c50");
         properties.put("password", "Demandware1!");
 
@@ -115,13 +116,13 @@ public class CIPDriverIT {
 
             // Attempt to establish a connection with valid credentials but restricted access (403)
             // Use valid client ID but simulate a 400 error (insufficient access rights)
-            Connection conn = DriverManager.getConnection("jdbc:salesforcecc://localhost:9787/bjxl_prd", properties);
+            Connection conn = DriverManager.getConnection("jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjxl_prd", properties);
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT 1");
 
             // Iterate through the results (if any) to ensure the query is processed
             while (resultSet.next()) {
-                System.out.println(resultSet.getInt(1));
+                System.out.println(resultSet.getString(1));
             }
         });
 

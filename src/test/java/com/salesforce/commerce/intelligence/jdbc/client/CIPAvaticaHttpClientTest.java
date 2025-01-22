@@ -33,10 +33,8 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore
 public class CIPAvaticaHttpClientTest {
     private static final String HEADER_SESSION_ID = "x-session-id";
 
@@ -257,7 +255,7 @@ public class CIPAvaticaHttpClientTest {
             fail("Expected RuntimeException due to 403 Unauthorized error");
         } catch (RuntimeException e) {
             // Verify that the exception contains the correct message
-            assertTrue("Exception message should contain HTTP 403.", e.getMessage().contains("HTTP/403"));
+            assertTrue("Exception message should contain HTTP 403.", e.getMessage().contains("HTTP request failed with status code 403"));
         }
     }
 
