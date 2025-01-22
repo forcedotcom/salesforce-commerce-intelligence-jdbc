@@ -14,16 +14,21 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import com.salesforce.commerce.intelligence.jdbc.client.auth.AmAuthService;
 import org.apache.calcite.avatica.ConnectionConfig;
+import org.apache.calcite.avatica.Meta;
 import org.apache.calcite.avatica.remote.ProtobufTranslation;
 import org.apache.calcite.avatica.remote.Service;
+import org.apache.calcite.avatica.remote.TypedValue;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -270,6 +275,55 @@ public class CIPAvaticaHttpClientTest {
             fail("Expected RuntimeException due to missing token");
         } catch (RuntimeException e) {
             assertTrue(e.getMessage().contains("Failed to generate or refresh JWT token"));
+        }
+    }
+
+    @Test
+    public void testExtractConnectionId_NoSuchFieldException() {
+        // Mock a request object with no "connectionId" field
+        Service.Request mockRequest = mock(Service.Request.class);
+
+        // Extract connection ID
+        String connectionId = cipAvaticaHttpClient.extractConnectionId(mockRequest);
+
+        // Assert that connectionId is null when the field does not exist
+        assertEquals("Connection ID should be null when field is missing.", null, connectionId);
+    }
+
+    @Test
+    public void testExtractConnectionId_ExecuteRequest() {
+        // Create a real Meta.StatementHandle with a mock connectionId
+        Meta.StatementHandle realStatementHandle = new Meta.StatementHandle("mock-connection-id", 123, null);
+
+        // Create a dummy parameterValues list (can be empty)
+        List<TypedValue> parameterValues = Collections.emptyList();
+
+        // Set a dummy maxRowCount
+        int maxRowCount = 100;
+
+        // Create a real Service.ExecuteRequest instance
+        Service.ExecuteRequest realRequest = new Service.ExecuteRequest(realStatementHandle, parameterValues, maxRowCount);
+
+        // Extract connection ID
+        String connectionId = cipAvaticaHttpClient.extractConnectionId(realRequest);
+
+        // Assert that the correct connectionId is extracted
+        assertEquals("mock-connection-id", connectionId);
+    }
+
+
+    @Test
+    public void testSend_ParseRequestIOException() throws Exception {
+        // Simulate an IOException when parsing the request
+        when(mockProtobufTranslation.parseRequest(any())).thenThrow(new IOException("Failed to parse request"));
+
+        try {
+            // Call the send method
+            cipAvaticaHttpClient.send("request-payload".getBytes());
+            fail("Expected RuntimeException due to IOException during request parsing");
+        } catch (RuntimeException e) {
+            // Verify that the exception contains the correct message
+            assertTrue(e.getMessage().contains("Failed to parse request"));
         }
     }
 }
