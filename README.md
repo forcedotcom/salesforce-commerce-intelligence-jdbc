@@ -40,7 +40,7 @@ Now, Navigate to Database -> New Database Connection. Click the driver you regis
     - **Description**: Specifies the CIP database connection string, including the instance you want to connect to.
     - **Type**: String
     - **Required**: Yes
-    - **Example**: `jdbc:salesforcecc://localhost:9787/bjnl_prd`
+    - **Example**: `jdbc:salesforcecc://localhost:9787/xxxx_prd`
 
 2. **Username**
     - **Description**: The Client ID provided by the Account Manager.
@@ -53,16 +53,6 @@ Now, Navigate to Database -> New Database Connection. Click the driver you regis
     - **Required**: Yes
 
 <img width="798" alt="image" src="./images/jdbc-connection.png">
-
-
-### User-Defined Properties
-
-You can override the AM host name by adding a user-defined property as shown below: (Default value for this is Production AM URL)
-
-```properties
-amOauthHost=https://account.demandware.net
-```
-<img width="806" alt="image" src="./images/jdbc-driver-prop.png">
 
 ### Connecting to the Database
 
