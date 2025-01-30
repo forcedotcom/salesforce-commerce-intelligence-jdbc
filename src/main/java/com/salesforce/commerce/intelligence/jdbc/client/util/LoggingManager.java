@@ -18,36 +18,31 @@ public class LoggingManager {
 
     /**
      * Configures logging for two classes based on the 'enableLogging' property from a Properties object. If enableLogging is set to 'true',
-     * all logging levels are enabled. Otherwise, all logging is disabled (including ERROR logs).
+     * all logging levels are enabled. Otherwise, only ERROR logging is enabled.
      *
      * @param properties The Properties object containing configuration.
      */
     public static void configureLogging(Properties properties) throws SQLException {
-        String enableLogging = properties.getProperty("enableLogging", "false");
+        String enableLogging = properties.getProperty("enableLogging", "false").toLowerCase();
 
-        boolean isEnableLogging = false; // Default to false
-
-        if (enableLogging != null) {
-            if (enableLogging.equalsIgnoreCase("true")) {
-                isEnableLogging = true;
-            } else if (enableLogging.equalsIgnoreCase("false")) {
-                isEnableLogging = false;
-            } else {
-                // Handle invalid value by throwing an exception
-                throw new SQLException("Invalid value for enableLogging property. Expected 'true' or 'false', but got: " + enableLogging);
-            }
-        }
-
-        if (isEnableLogging) {
+        switch (enableLogging) {
+        case "true":
             // Enable all logging for the two classes
             Configurator.setLevel(CIPDriver.class.getName(), Level.ALL);
             Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.ALL);
             classCIPDriverLogger.debug("Logging enabled for CIPDriver.");
             classCIPAvaticaHttpClientLogger.debug("Logging enabled for CIPAvaticaHttpClient.");
-        } else {
-            // Disable all logging (including error) for the two classes
-            Configurator.setLevel(CIPDriver.class.getName(), Level.OFF);
-            Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.OFF);
+            break;
+
+        case "false":
+            // Enable only ERROR logging for the two classes
+            Configurator.setLevel(CIPDriver.class.getName(), Level.ERROR);
+            Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.ERROR);
+            break;
+
+        default:
+            // Handle invalid value by throwing an exception
+            throw new SQLException("Invalid value for enableLogging property. Expected 'true' or 'false', but got: " + enableLogging);
         }
     }
 }
