@@ -45,7 +45,7 @@ executePipeline(envDef) {
         }
 
         stage('Publishing Code Coverage'){
-            CodeCoverageUtils.publishAndValidateCoverageReport(this, [run_sonar_analysis: true, tool_name:'jacoco', inclusion_patterns:'org/cip/auth/**', code_coverage_tool_version:'0.8.12'])
+            CodeCoverageUtils.publishAndValidateCoverageReport(this, [run_sonar_analysis: true, tool_name:'jacoco', inclusion_patterns:'com/salesforce/commerce/intelligence/jdbc/client/**', code_coverage_tool_version:'0.8.12'])
         }
 
         stage("Publish") {
