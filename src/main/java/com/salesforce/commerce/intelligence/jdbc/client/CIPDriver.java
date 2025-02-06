@@ -74,7 +74,7 @@ public class CIPDriver extends Driver {
 
         // Control logging based on the 'enableLogging' property in the Properties object
         // Configure logging for the classes
-        //LoggingManager.configureLogging(info);
+        LoggingManager.configureLogging(info);
 
         LOG.debug( "In connect method" );
 

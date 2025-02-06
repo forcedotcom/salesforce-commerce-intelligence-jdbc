@@ -21,14 +21,9 @@
 
     <Loggers>
         <!-- Root logger configuration -->
-        <Root level="warn">
+        <Root level="error">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
         </Root>
-
-        <!-- Logger for JDBC Driver classes (example) -->
-        <Logger name="com.example.jdbcdriver" level="debug" additivity="false">
-            <AppenderRef ref="Console" />
-        </Logger>
     </Loggers>
 </Configuration>
