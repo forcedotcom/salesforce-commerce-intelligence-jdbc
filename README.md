@@ -11,7 +11,7 @@ To install the JDBC driver, follow these steps:
    git clone https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc.git
    cd salesforce-commerce-intelligence-jdbc
    ```
-   Download `cip-client-dataconnector-0.1.9.jar` file.
+   Download `cip-client-dataconnector-0.1.10.jar` file.
 
 ## Usage
 
