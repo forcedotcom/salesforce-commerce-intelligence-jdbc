@@ -40,7 +40,7 @@ Now, Navigate to Database -> New Database Connection. Click the driver you regis
     - **Description**: Specifies the CIP database connection string, including the instance you want to connect to.
     - **Type**: String
     - **Required**: Yes
-    - **Example**: `jdbc:salesforcecc://localhost:9787/xxxx_prd`
+    - **Example**: `jdbc:salesforcecc://jdbc.analytics.commercecloud.salesforce.com:443/abcd_prd`
 
 2. **Username**
     - **Description**: The Client ID provided by the Account Manager.
