@@ -51,6 +51,7 @@ public class CIPAvaticaHttpClient
     private static final long TOKEN_EXPIRY_THRESHOLD_MS = 5 * 60 * 1000;
 
     private static final String HEADER_SESSION_ID = "x-session-id";
+    private static final String HEADER_REQUEST_TYPE = "x-Request-Type";
     private String jwtToken; // The current JWT token for authorization
     long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
     private final AmAuthService amAuthService; // Service for handling OAuth2 authentication
@@ -132,19 +133,10 @@ public class CIPAvaticaHttpClient
 
         LOG.debug("Sending request to Avatica server.");
 
-        Service.Request genericReq;
-        try
-        {
-            genericReq = pbTranslation.parseRequest(request);
-        }
-        catch ( IOException e )
-        {
-            LOG.error( "Exception when extracting connection Id:", e );
-            throw new RuntimeException( e );
-        }
+
+        Service.Request genericReq = getGenericReq( request );
 
         // Attempt to extract connectionId dynamically
-        //
         String connectionId = extractConnectionId(genericReq);
         if (connectionId != null) {
             LOG.debug("Extracted Connection ID: {}", connectionId);
@@ -260,6 +252,13 @@ public class CIPAvaticaHttpClient
         if ( sessionId != null) {
             post.setHeader(HEADER_SESSION_ID, sessionId );
         }
+
+        // Add executeRequest header
+        Service.Request genericReq = getGenericReq( request );
+        if (genericReq instanceof Service.ExecuteRequest) {
+            post.setHeader(HEADER_REQUEST_TYPE, "execute" );
+        }
+
         return post;
     }
 
@@ -276,6 +275,7 @@ public class CIPAvaticaHttpClient
     }
 
     public void setHttpClientPool(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
+        pool.setDefaultMaxPerRoute( 100 );
         this.initializeClient(pool, config);
     }
 
@@ -320,6 +320,21 @@ public class CIPAvaticaHttpClient
                             request.getClass().getSimpleName(), e.getMessage());
         }
         return null;
+    }
+
+    Service.Request getGenericReq( byte[] request )
+    {
+        Service.Request genericReq;
+        try
+        {
+            genericReq = pbTranslation.parseRequest( request );
+        }
+        catch ( IOException e )
+        {
+            LOG.error( "Exception when extracting connection Id:", e );
+            throw new RuntimeException( e );
+        }
+        return genericReq;
     }
 }
 
