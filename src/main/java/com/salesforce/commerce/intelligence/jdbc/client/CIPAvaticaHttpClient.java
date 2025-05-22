@@ -275,7 +275,6 @@ public class CIPAvaticaHttpClient
     }
 
     public void setHttpClientPool(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
-        pool.setDefaultMaxPerRoute( 100 );
         this.initializeClient(pool, config);
     }
 
