@@ -126,4 +126,34 @@ public class CIPDriverIT {
         // Optionally, assert more details about the SQLException (like the SQLState, error code, or message)
         assertEquals("400 Bad Request.{\"error_description\":\"Unknown/invalid tenant scope: SALESFORCE_COMMERCE_API:bjxl_prd\",\"error\":\"invalid_scope\"}", sqlException.getMessage());
     }
+
+    /**
+     * Test to verify error handling for HTTP responses with response body.
+     */
+    @Test
+    public void testCIPDriver_ErrorResponseHandling() {
+        Properties properties = new Properties();
+        properties.put("ssl", "true");
+        properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c50");
+        properties.put("password", "Demandware1!");
+        properties.put("amOauthHost", "https://account-pod5.demandware.net");
+
+        // Test case 1: Error with response body
+        Exception exceptionWithBody = assertThrows(SQLException.class, () -> {
+            Class.forName("com.salesforce.commerce.intelligence.jdbc.client.CIPDriver");
+            // Use an invalid query that will return a 400 with response body
+            Connection conn = DriverManager.getConnection(
+                "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", 
+                properties);
+            Statement statement = conn.createStatement();
+            statement.executeQuery("INVALID QUERY SYNTAX");
+        });
+
+        // Verify the error message contains both status code and response body
+        assertTrue("Error message should contain status code", 
+            exceptionWithBody.getMessage().contains("HTTP request failed with status code 400: Bad Request"));
+        assertTrue("Error message should contain response body", 
+            exceptionWithBody.getMessage().contains("Caused by: java.sql.SQLException: Error while executing SQL \"INVALID QUERY SYNTAX\""));
+ 
+    }
 }

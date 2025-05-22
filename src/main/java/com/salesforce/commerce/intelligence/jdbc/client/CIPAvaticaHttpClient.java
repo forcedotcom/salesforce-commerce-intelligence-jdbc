@@ -185,8 +185,16 @@ public class CIPAvaticaHttpClient
                             LOG.warn("Failed to connect to server (HTTP/503), retrying");
                             continue;
                         }
-                        LOG.error("HTTP request failed with status code {}: {}", statusCode, response.getReasonPhrase());
-                        throw new RuntimeException(String.format("HTTP request failed with status code %d: %s", statusCode, response.getReasonPhrase()));
+
+                        if (response.getEntity() != null) {
+                                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                                LOG.error("HTTP request failed with status code {}: {}. Errors: {}", statusCode, response.getReasonPhrase(), responseBody);
+                                throw new RuntimeException(String.format("HTTP request failed with status code %d: %s. Errors: %s", statusCode, response.getReasonPhrase(), responseBody));
+                        } else {
+                            LOG.error("HTTP request failed with status code {}: {}", statusCode, response.getReasonPhrase());
+                            throw new RuntimeException(String.format("HTTP request failed with status code %d: %s", statusCode, response.getReasonPhrase()));
+                        }
+
                     }
 
                     if( statusCode == HttpURLConnection.HTTP_OK )
