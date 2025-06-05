@@ -311,7 +311,6 @@ public class CIPAvaticaHttpClientTest {
         assertEquals("mock-connection-id", connectionId);
     }
 
-
     @Test
     public void testSend_ParseRequestIOException() throws Exception {
         // Simulate an IOException when parsing the request

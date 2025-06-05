@@ -39,7 +39,8 @@ public class LoggingManagerTest {
 
         // Verify logging levels
         assertEquals("CIPDriver logging level should be ALL", Level.ALL, LogManager.getLogger(CIPDriver.class).getLevel());
-        assertEquals("CIPAvaticaHttpClient logging level should be ALL", Level.ALL, LogManager.getLogger(CIPAvaticaHttpClient.class).getLevel());
+        assertEquals("CIPAvaticaHttpClient logging level should be ALL", Level.ALL, LogManager.getLogger(CIPAvaticaHttpClient.class)
+                .getLevel());
     }
 
     @Test
@@ -51,7 +52,8 @@ public class LoggingManagerTest {
 
         // Verify logging levels
         assertEquals("CIPDriver logging level should be ERROR", Level.ERROR, LogManager.getLogger(CIPDriver.class).getLevel());
-        assertEquals("CIPAvaticaHttpClient logging level should be ERROR", Level.ERROR, LogManager.getLogger(CIPAvaticaHttpClient.class).getLevel());
+        assertEquals("CIPAvaticaHttpClient logging level should be ERROR", Level.ERROR, LogManager.getLogger(CIPAvaticaHttpClient.class)
+                .getLevel());
     }
 
     @Test
@@ -62,7 +64,8 @@ public class LoggingManagerTest {
 
         // Verify logging levels default to ERROR
         assertEquals("CIPDriver logging level should default to ERROR", Level.ERROR, LogManager.getLogger(CIPDriver.class).getLevel());
-        assertEquals("CIPAvaticaHttpClient logging level should default to ERROR", Level.ERROR, LogManager.getLogger(CIPAvaticaHttpClient.class).getLevel());
+        assertEquals("CIPAvaticaHttpClient logging level should default to ERROR", Level.ERROR,
+                LogManager.getLogger(CIPAvaticaHttpClient.class).getLevel());
     }
 
     @Test(expected = SQLException.class)
@@ -74,4 +77,3 @@ public class LoggingManagerTest {
         LoggingManager.configureLogging(properties);
     }
 }
-
