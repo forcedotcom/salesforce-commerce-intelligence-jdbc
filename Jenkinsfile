@@ -13,6 +13,7 @@ import net.sfdc.dci.CodeCoverageUtils
 def envDef = [buildImage: '871501607754.dkr.ecr.us-west-2.amazonaws.com/sfci/cc-commerce-intelligence-platform/cip-build-image:1.0.1']
 def serviceName = "client-dataconnector"
 def serverImagetag = "cip-dataconnector-client"
+def publicGitHubRepo = "https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc.git"
 
 env.RELEASE_BRANCHES = ['master']
 
@@ -49,13 +50,15 @@ executePipeline(envDef) {
         }
 
         stage("Publish") {
-            //deploy the compiled artifact to Nexus
             if (env.BRANCH_NAME == "master") {
-                //follow release process described here: https://confluence.internal.salesforce.com/display/public/ZEN/Publishing+to+Nexus+on+SFCI
+                // Internal Salesforce registry publishing
                 mavenVersionsSet([managed: false, auto_increment: false])
                 mavenBuild maven_args: '-DskipUTs -DskipTests -DskipITs'
                 mavenStageArtifacts()
                 mavenPromoteArtifacts()
+
+                // Push to public GitHub repository
+                publishToPublicGitHub(version)
             } else {
                 //for non master branches, we just deploy a snapshot
                 cip_utils.updateFeatureBranchVersion()
@@ -66,5 +69,30 @@ executePipeline(envDef) {
         stage('GUS Compliance'){
             git2gus()
         }
+    }
+}
+
+def publishToPublicGitHub(version) {
+    withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GITHUB_USERNAME', passwordVariable: 'GITHUB_TOKEN')]) {
+        sh """
+            # TODO: Update it once we have a team account for the public repo
+            git config --global user.email "wang.wang@salesforce.com"
+            git config --global user.name "\${GITHUB_USERNAME}"
+            
+            # Add remote with credentials
+            git remote add public https://\${GITHUB_USERNAME}:\${GITHUB_TOKEN}@github.com/forcedotcom/salesforce-commerce-intelligence-jdbc.git
+            
+            # Commit and push the JARs 
+            cp ./target/cip-client-dataconnector-${version}.jar .
+            git add ./cip-client-dataconnector-${version}.jar ./src/**/* ./pom.xml ./README.md
+            git commit -m "Upload src content and JAR files to version ${version}"
+
+            # Create a tag for the release
+            git tag -a v${version} -m "Release v${version}"
+            
+            # push the tag to the public repo
+            git push public master
+            git push public v${version}
+        """
     }
 }
