@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.11</version>
+  <version>0.1.12</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
