@@ -91,7 +91,7 @@ def publishToPublicGitHub(version) {
             git tag -a v${version} -m "Release v${version}"
             
             # push the tag to the public repo
-            git push public master
+            git push public main
             git push public v${version}
         """
     }
