@@ -82,16 +82,19 @@ def publishToPublicGitHub(version) {
             # Add remote with credentials
             git remote add public https://\${GITHUB_USERNAME}:\${GITHUB_TOKEN}@github.com/forcedotcom/salesforce-commerce-intelligence-jdbc.git
             
+            # Create and switch to main branch first
+            git checkout -b main
+            
             # Commit and push the JARs 
             cp ./target/cip-client-dataconnector-${version}.jar .
             git add ./cip-client-dataconnector-${version}.jar ./src/**/* ./pom.xml ./README.md
             git commit -m "Upload src content and JAR files to version ${version}"
 
-            # Create a tag for the release
+            # Push the main branch first
+            git push -f public main
+
+            # Create and push the tag
             git tag -a v${version} -m "Release v${version}"
-            
-            # push the tag to the public repo
-            git push public main
             git push public v${version}
         """
     }
