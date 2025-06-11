@@ -264,6 +264,7 @@ public class CIPAvaticaHttpClient
         // Add executeRequest header
         Service.Request genericReq = getGenericReq( request );
         if (genericReq instanceof Service.ExecuteRequest) {
+            LOG.debug("Setting executeRequest header");
             post.setHeader(HEADER_REQUEST_TYPE, "execute" );
         }
 
