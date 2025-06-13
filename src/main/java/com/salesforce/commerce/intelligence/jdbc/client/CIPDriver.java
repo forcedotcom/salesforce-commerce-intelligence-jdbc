@@ -128,9 +128,6 @@ public class CIPDriver extends Driver {
 
             // Set PostgreSQL dialect for the connection
             info.setProperty( "fun", "postgresql" );
-            // Disable case sensitivity for both table and column names in SQL queries.
-            // This ensures that the queries work regardless of the casing used in table and column names.
-            info.setProperty("caseSensitive", "true");
 
             String serialization = info.getProperty( BuiltInConnectionProperty.SERIALIZATION.camelName() );
 

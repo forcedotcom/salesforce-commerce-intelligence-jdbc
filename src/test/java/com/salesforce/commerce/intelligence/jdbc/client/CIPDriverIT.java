@@ -42,7 +42,7 @@ public class CIPDriverIT {
                     "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
 
             Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * from \"ccdw_dim_date\" LIMIT 5");
+            ResultSet resultSet = statement.executeQuery("SELECT * from ccdw_dim_date LIMIT 5");
 
             // Iterate through the results (if any) to ensure the query is processed
             while (resultSet.next()) {
@@ -75,7 +75,7 @@ public class CIPDriverIT {
             {
 
                 // This should fail if "DAY_ID" does not match the actual case in the schema
-                statement.executeQuery( "SELECT \"DAY_ID\" FROM \"ccdw_dim_date\" LIMIT 5" );
+                statement.executeQuery( "SELECT DAY_ID FROM ccdw_dim_date LIMIT 5" );
             }
         } );
 
@@ -98,10 +98,10 @@ public class CIPDriverIT {
 
             // for local testing set url as "jdbc:salesforcecc://localhost:9787/bjnl_prd"
             Connection conn = DriverManager.getConnection(
-                            "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
+                    "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
 
             Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT \"day_id\" FROM \"ccdw_dim_date\" LIMIT 5");
+            ResultSet resultSet = statement.executeQuery("SELECT day_id FROM ccdw_dim_date LIMIT 5");
 
             // Iterate through the results (if any) to ensure the query is processed
             while (resultSet.next()) {
