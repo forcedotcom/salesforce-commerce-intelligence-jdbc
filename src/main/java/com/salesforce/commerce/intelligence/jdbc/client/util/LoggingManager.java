@@ -30,6 +30,11 @@ public class LoggingManager {
             // Enable all logging for the two classes
             Configurator.setLevel(CIPDriver.class.getName(), Level.ALL);
             Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.ALL);
+
+            Configurator.setLevel("org.apache.hc.client5.http.impl.classic", Level.ALL);
+            System.setProperty("org.slf4j.simpleLogger.log.org.apache.hc", "debug");
+            System.setProperty("org.slf4j.simpleLogger.log.org.apache.http", "debug");
+
             classCIPDriverLogger.debug("Logging enabled for CIPDriver.");
             classCIPAvaticaHttpClientLogger.debug("Logging enabled for CIPAvaticaHttpClient.");
             break;
