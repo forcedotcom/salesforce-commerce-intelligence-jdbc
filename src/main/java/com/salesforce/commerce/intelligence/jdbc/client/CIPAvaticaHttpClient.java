@@ -52,10 +52,30 @@ public class CIPAvaticaHttpClient
 
     private static final String HEADER_SESSION_ID = "x-session-id";
     private static final String HEADER_REQUEST_TYPE = "x-Request-Type";
+    /**
+     * A fake JWT access token used in test mode to simulate authentication.
+     * This token is used when testMode is enabled to avoid making actual OAuth calls
+     * to the authentication service. It allows for testing the client's functionality
+     * without requiring valid credentials or network connectivity to the auth server.
+     * 
+     * The token is required because the server-side CIPAvaticaHandler performs validation
+     * that requires a non-null, non-empty token in the Authorization header. If no token
+     * is provided, the server will return a 401 Unauthorized error. This fake token
+     * allows test mode to bypass this validation while still maintaining the expected
+     * request structure.
+     */
+    private static final String FAKE_TK = "fake_tk";
     private String jwtToken; // The current JWT token for authorization
     long tokenExpiryTimeMs = 0; // Timestamp (in ms) when the token expires
     private final AmAuthService amAuthService; // Service for handling OAuth2 authentication
     private final ProtobufTranslation pbTranslation;
+
+    // Test mode fields
+    // This is used to simulate authentication for testing purposes.
+    // It is set to true if the testMode property is set to true in the connection properties.
+    // If testMode is true, the jwtToken and tokenExpiryTimeMs are set to the fake access token and 1 hour from now.
+    // This is used to avoid making actual OAuth calls to the authentication service.
+    private final boolean testMode;
 
     // OAuth2 parameters
     private final String oauthHost;
@@ -100,6 +120,13 @@ public class CIPAvaticaHttpClient
         this.clientId = connectionProps.getProperty("user");
         this.clientSecret = connectionProps.getProperty("password");
         this.instanceId = connectionProps.getProperty("instanceId");
+        
+        // Initialize test mode fields
+        this.testMode = Boolean.parseBoolean(connectionProps.getProperty("testMode", "false"));
+        if (this.testMode) {
+            this.jwtToken = FAKE_TK;  
+            this.tokenExpiryTimeMs = System.currentTimeMillis() + 3600000L;
+        }
     }
 
     /**
@@ -119,6 +146,13 @@ public class CIPAvaticaHttpClient
         this.clientId = connectionProps.getProperty("user");
         this.clientSecret = connectionProps.getProperty("password");
         this.instanceId = connectionProps.getProperty("instanceId");
+        
+        // Initialize test mode fields
+        this.testMode = Boolean.parseBoolean(connectionProps.getProperty("testMode", "false"));
+        if (this.testMode) {
+            this.jwtToken = FAKE_TK;
+            this.tokenExpiryTimeMs = System.currentTimeMillis() + 3600000L;
+        }
     }
 
     protected void initializeClient(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
@@ -253,7 +287,7 @@ public class CIPAvaticaHttpClient
         ByteArrayEntity entity = new ByteArrayEntity( request, ContentType.APPLICATION_OCTET_STREAM);
         HttpPost post = new HttpPost(this.uri);
         post.setEntity(entity);
-        post.setHeader("Authorization", "Bearer " + jwtToken);  // Attach JWT token
+        post.setHeader("Authorization", "Bearer " + jwtToken);
         post.setHeader("InstanceId", instanceId);  // Attach InstanceId header
 
         // Attach session ID if available
@@ -293,6 +327,9 @@ public class CIPAvaticaHttpClient
      * @return True if the token is missing or near expiration, otherwise false.
      */
     private boolean isTokenExpiredOrMissing() {
+        if (this.testMode) {
+            return this.jwtToken == null;
+        }
         boolean isExpiredOrMissing = tokenExpiryTimeMs == 0 || System.currentTimeMillis() >= tokenExpiryTimeMs - TOKEN_EXPIRY_THRESHOLD_MS;
         LOG.debug("Token expired or missing: {}", isExpiredOrMissing);
         return isExpiredOrMissing;
