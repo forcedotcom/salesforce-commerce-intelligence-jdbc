@@ -22,7 +22,7 @@ import org.junit.Test;
  * against local cip-service-dataconnector set url as "jdbc:salesforcecc://localhost:9787/bjnl_prd"
  */
 
-// @Ignore
+ @Ignore
 public class CIPDriverIT {
 
     @Test
