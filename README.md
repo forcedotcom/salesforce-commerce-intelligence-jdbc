@@ -79,4 +79,22 @@ amOauthHost=https://account-pod5.demandware.net
 
 In your SQL editor, use the JDBC URL format and provide the necessary credentials to establish a connection. The driver handles the authentication and connection setup using the provided properties.
 
-By following these steps and configurations, you should be able to connect to CIP data warehouse seamlessly.
+### Network Configuration (Proxy/SSL Support)
+
+The JDBC driver automatically uses system-level network settings when making HTTP requests to the backend.  
+This is possible because the driver configures the HTTP client with `.useSystemProperties()`.
+
+This allows you to configure proxy or SSL settings using standard Java system properties, without changing any code.
+
+**Examples:**
+
+```bash
+-Dhttp.proxyHost=proxy.mycompany.com
+-Dhttp.proxyPort=8080
+-Dhttps.proxyHost=proxy.mycompany.com
+-Dhttps.proxyPort=8443
+-Djavax.net.ssl.trustStore=/path/to/truststore.jks
+-Djavax.net.ssl.trustStorePassword=changeit
+
+
+By following these steps and configurations, you should be able to connect to data warehouse seamlessly.

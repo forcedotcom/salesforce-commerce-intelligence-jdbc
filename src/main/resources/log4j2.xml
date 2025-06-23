@@ -20,6 +20,13 @@
     </Appenders>
 
     <Loggers>
+
+        <!-- HTTP Client Debug Logging -->
+        <Logger name="org.apache.hc.client5.http.impl.classic" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+
         <!-- Root logger configuration -->
         <Root level="error">
             <AppenderRef ref="Console"/>
