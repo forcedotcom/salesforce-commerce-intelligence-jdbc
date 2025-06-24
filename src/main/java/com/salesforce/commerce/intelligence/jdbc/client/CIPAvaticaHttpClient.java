@@ -52,6 +52,8 @@ public class CIPAvaticaHttpClient
 
     private static final String HEADER_SESSION_ID = "x-session-id";
     private static final String HEADER_REQUEST_TYPE = "x-Request-Type";
+    private static final String HEADER_REQUEST_QUERY_EXECUTE = "query-execute";
+
     /**
      * A fake JWT access token used in test mode to simulate authentication.
      * This token is used when testMode is enabled to avoid making actual OAuth calls
@@ -158,7 +160,13 @@ public class CIPAvaticaHttpClient
     protected void initializeClient(PoolingHttpClientConnectionManager pool, ConnectionConfig config) {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
         RequestConfig requestConfig = requestConfigBuilder.setConnectTimeout(config.getHttpConnectionTimeout(), TimeUnit.MILLISECONDS).setResponseTimeout( config.getHttpResponseTimeout(), TimeUnit.MILLISECONDS ).build();
-        HttpClientBuilder httpClientBuilder = HttpClients.custom().setConnectionManager(pool).setDefaultRequestConfig(requestConfig);
+        // Use system properties to support proxy, SSL, and timeout configurations
+        // This allows the driver to respect standard Java settings like:
+        // - http.proxyHost / http.proxyPort
+        // - https.proxyHost / https.proxyPort
+        // - javax.net.ssl.trustStore / trustStorePassword
+        // It helps the driver work correctly in environments with custom network setups (e.g., behind a proxy)
+        HttpClientBuilder httpClientBuilder = HttpClients.custom().useSystemProperties().setConnectionManager(pool).setDefaultRequestConfig(requestConfig);
         this.context = HttpClientContext.create();
         this.client = httpClientBuilder.build();
     }
@@ -297,9 +305,10 @@ public class CIPAvaticaHttpClient
 
         // Add executeRequest header
         Service.Request genericReq = getGenericReq( request );
-        if (genericReq instanceof Service.ExecuteRequest) {
-            LOG.debug("Setting executeRequest header");
-            post.setHeader(HEADER_REQUEST_TYPE, "execute" );
+        if ( genericReq instanceof Service.ExecuteRequest )
+        {
+            LOG.debug( "Setting {} header to {}", HEADER_REQUEST_TYPE, HEADER_REQUEST_QUERY_EXECUTE );
+            post.setHeader( HEADER_REQUEST_TYPE, HEADER_REQUEST_QUERY_EXECUTE );
         }
 
         return post;
