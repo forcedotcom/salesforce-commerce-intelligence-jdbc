@@ -111,6 +111,19 @@ public class CIPAvaticaHttpClient
 
     protected HttpClientContext context;
 
+    private static String clientVersion = "unknown";
+    static {
+        try (java.io.InputStream is = CIPAvaticaHttpClient.class.getClassLoader().getResourceAsStream("version.properties")) {
+            java.util.Properties props = new java.util.Properties();
+            if (is != null) {
+                props.load(is);
+                clientVersion = props.getProperty("version", "unknown");
+            }
+        } catch (java.io.IOException e) {
+            // fallback to "unknown"
+        }
+    }
+
     public CIPAvaticaHttpClient( URL url) {
         this.uri = toURI((URL)Objects.requireNonNull(url));
         this.amAuthService = new AmAuthService();
@@ -297,6 +310,7 @@ public class CIPAvaticaHttpClient
         post.setEntity(entity);
         post.setHeader("Authorization", "Bearer " + jwtToken);
         post.setHeader("InstanceId", instanceId);  // Attach InstanceId header
+        post.setHeader("X-Client-Version", clientVersion);
 
         // Attach session ID if available
         if ( sessionId != null) {

@@ -19,13 +19,26 @@
 
     <build>
 
+        <!--
+          We use two <resource> blocks below:
+          1. The first block enables filtering ONLY for version.properties, so Maven replaces @project.version@ with the actual version.
+          2. The second block copies all other resources as-is (no filtering), which is safer and faster for binary files and avoids accidental corruption.
+          This is a standard Maven pattern for injecting build-time info into a single resource file.
+        -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
-                <filtering>false</filtering>
+                <filtering>true</filtering>
                 <includes>
-                    <include>**/*</include>
+                    <include>version.properties</include>
                 </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>version.properties</exclude>
+                </excludes>
             </resource>
         </resources>
 
