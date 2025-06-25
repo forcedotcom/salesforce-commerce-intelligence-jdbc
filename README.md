@@ -109,3 +109,39 @@ This driver uses SLF4J with Logback. By default, it logs only errors (root logge
   <logger name="org.apache.hc.client5.http.impl.classic" level="DEBUG"/>
   ```
 - For more information on Logback configuration, see the [Logback documentation](https://logback.qos.ch/manual/configuration.html).
+
+### Example: Enable File Logging in Your Application
+
+If you want to log to a file as well as the console, add the following to your `logback.xml` (placed in your application's classpath):
+
+```xml
+<configuration>
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="File" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/app-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="ERROR">
+        <appender-ref ref="Console"/>
+        <appender-ref ref="File"/>
+    </root>
+</configuration>
+```
+
+**Note:**
+- Make sure the `logs/` directory exists and is writable by your application, or change the `<file>` path to a location your app can write to.
+- You can adjust the `<root level="ERROR">` to `WARN`, `INFO`, or `DEBUG` as needed.
