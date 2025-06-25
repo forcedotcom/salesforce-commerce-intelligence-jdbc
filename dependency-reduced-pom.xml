@@ -4,7 +4,7 @@
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
   <name>cip-client-dataconnector</name>
-  <version>0.1.20-SNAPSHOT</version>
+  <version>0.1.21-SNAPSHOT</version>
   <url>http://maven.apache.org</url>
   <build>
     <resources>
@@ -36,6 +36,11 @@
             <goals>
               <goal>shade</goal>
             </goals>
+            <configuration>
+              <transformers>
+                <transformer />
+              </transformers>
+            </configuration>
           </execution>
         </executions>
       </plugin>

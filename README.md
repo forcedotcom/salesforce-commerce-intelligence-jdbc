@@ -98,3 +98,14 @@ This allows you to configure proxy or SSL settings using standard Java system pr
 
 
 By following these steps and configurations, you should be able to connect to data warehouse seamlessly.
+
+## Logging
+
+This driver uses SLF4J with Logback. By default, it logs only errors (root logger level is set to ERROR).
+
+- To customize logging, add your own `logback.xml` to your application's classpath. Your configuration will override the default provided by the driver.
+- To enable debug logging for HTTP client internals, add the following to your `logback.xml`:
+  ```xml
+  <logger name="org.apache.hc.client5.http.impl.classic" level="DEBUG"/>
+  ```
+- For more information on Logback configuration, see the [Logback documentation](https://logback.qos.ch/manual/configuration.html).

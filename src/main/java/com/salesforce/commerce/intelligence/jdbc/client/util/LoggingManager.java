@@ -2,23 +2,28 @@ package com.salesforce.commerce.intelligence.jdbc.client.util;
 
 import com.salesforce.commerce.intelligence.jdbc.client.CIPAvaticaHttpClient;
 import com.salesforce.commerce.intelligence.jdbc.client.CIPDriver;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.Properties;
 
 public class LoggingManager {
 
+    // Note: With SLF4J + Logback, the 'enableLogging' property does not change log levels.
+    // Logging is controlled by logback.xml. This property is kept for backward compatibility.
+
     // Loggers for two example classes
-    private static final Logger classCIPDriverLogger = LogManager.getLogger(CIPDriver.class);
-    private static final Logger classCIPAvaticaHttpClientLogger = LogManager.getLogger(CIPAvaticaHttpClient.class);
+    private static final Logger classCIPDriverLogger = LoggerFactory.getLogger(CIPDriver.class);
+    private static final Logger classCIPAvaticaHttpClientLogger = LoggerFactory.getLogger(CIPAvaticaHttpClient.class);
 
     /**
-     * Configures logging for two classes based on the 'enableLogging' property from a Properties object. If enableLogging is set to 'true',
-     * all logging levels are enabled. Otherwise, only ERROR logging is enabled.
+     * Configures logging for two classes based on the 'enableLogging' property from a Properties object.
+     *
+     * <p>
+     * Note: With SLF4J + Logback, the 'enableLogging' property does not change log levels. Logging is controlled by logback.xml. This
+     * property is kept for backward compatibility.
+     * </p>
      *
      * @param properties The Properties object containing configuration.
      */
@@ -27,21 +32,15 @@ public class LoggingManager {
 
         switch (enableLogging) {
         case "true":
-            // Enable all logging for the two classes
-            Configurator.setLevel(CIPDriver.class.getName(), Level.ALL);
-            Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.ALL);
             classCIPDriverLogger.debug("Logging enabled for CIPDriver.");
             classCIPAvaticaHttpClientLogger.debug("Logging enabled for CIPAvaticaHttpClient.");
             break;
 
         case "false":
-            // Enable only ERROR logging for the two classes
-            Configurator.setLevel(CIPDriver.class.getName(), Level.ERROR);
-            Configurator.setLevel(CIPAvaticaHttpClient.class.getName(), Level.ERROR);
+            // Only ERROR logs will be output if the backend is configured accordingly.
             break;
 
         default:
-            // Handle invalid value by throwing an exception
             throw new SQLException("Invalid value for enableLogging property. Expected 'true' or 'false', but got: " + enableLogging);
         }
     }

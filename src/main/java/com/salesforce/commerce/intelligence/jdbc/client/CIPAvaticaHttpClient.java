@@ -35,8 +35,8 @@ import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NoHttpResponseException;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication. It manages the lifecycle of a token, including
@@ -85,7 +85,7 @@ public class CIPAvaticaHttpClient
     private final String clientSecret;
     private final String instanceId;
 
-    private static final Logger LOG = LogManager.getLogger( CIPAvaticaHttpClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CIPAvaticaHttpClient.class);
 
     // Thread-safe store for session IDs associated with each connection
     // --------------------------------------------------------------------
