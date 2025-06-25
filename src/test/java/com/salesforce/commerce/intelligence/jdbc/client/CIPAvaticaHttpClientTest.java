@@ -450,4 +450,18 @@ public class CIPAvaticaHttpClientTest {
         boolean result2 = (boolean) m.invoke(testModeClient);
         assertTrue(result2);
     }
+
+    @Test
+    public void testClientVersionLoadedFromProperties() throws Exception {
+        // Access the private static field via reflection
+        java.lang.reflect.Field versionField = CIPAvaticaHttpClient.class.getDeclaredField("clientVersion");
+        versionField.setAccessible(true);
+        String version = (String) versionField.get(null);
+
+        // The value should not be the fallback or unresolved value
+        assertNotNull(version);
+        assertFalse(version.isEmpty());
+        assertFalse("@project.version@".equals(version));
+        assertFalse("unknown".equals(version));
+    }
 }
