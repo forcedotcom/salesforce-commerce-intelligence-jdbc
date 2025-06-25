@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 
-import com.salesforce.commerce.intelligence.jdbc.client.util.LoggingManager;
 import org.apache.calcite.avatica.BuiltInConnectionProperty;
 import org.apache.calcite.avatica.ConnectionProperty;
 import org.apache.calcite.avatica.remote.Driver;
@@ -71,11 +70,6 @@ public class CIPDriver extends Driver {
     @Override
     public Connection connect(String url, Properties info) throws SQLException
     {
-
-        // Control logging based on the 'enableLogging' property in the Properties object
-        // Configure logging for the classes
-        LoggingManager.configureLogging(info);
-
         LOG.debug( "In connect method" );
 
         connectionProperties.set( info );
