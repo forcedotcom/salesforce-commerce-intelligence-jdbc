@@ -111,18 +111,20 @@ public class CIPAvaticaHttpClient
 
     protected HttpClientContext context;
 
-    private static String clientVersion = "unknown";
-    static {
+    private static String loadClientVersion() {
         try (java.io.InputStream is = CIPAvaticaHttpClient.class.getClassLoader().getResourceAsStream("version.properties")) {
             java.util.Properties props = new java.util.Properties();
             if (is != null) {
                 props.load(is);
-                clientVersion = props.getProperty("version", "unknown");
+                return props.getProperty("version", "unknown");
             }
         } catch (java.io.IOException e) {
             // fallback to "unknown"
         }
+        return "unknown";
     }
+
+    private static String clientVersion = loadClientVersion();
 
     public CIPAvaticaHttpClient( URL url) {
         this.uri = toURI((URL)Objects.requireNonNull(url));

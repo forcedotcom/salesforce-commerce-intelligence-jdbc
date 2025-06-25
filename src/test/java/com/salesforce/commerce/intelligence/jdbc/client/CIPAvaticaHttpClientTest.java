@@ -452,13 +452,10 @@ public class CIPAvaticaHttpClientTest {
     }
 
     @Test
-    public void testClientVersionLoadedFromProperties() throws Exception {
-        // Access the private static field via reflection
+    public void testClientVersion_StaticField_HappyPath() throws Exception {
         java.lang.reflect.Field versionField = CIPAvaticaHttpClient.class.getDeclaredField("clientVersion");
         versionField.setAccessible(true);
         String version = (String) versionField.get(null);
-
-        // The value should not be the fallback or unresolved value
         assertNotNull(version);
         assertFalse(version.isEmpty());
         assertFalse("@project.version@".equals(version));
