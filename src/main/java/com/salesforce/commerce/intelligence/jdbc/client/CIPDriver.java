@@ -7,12 +7,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 
-import com.salesforce.commerce.intelligence.jdbc.client.util.LoggingManager;
 import org.apache.calcite.avatica.BuiltInConnectionProperty;
 import org.apache.calcite.avatica.ConnectionProperty;
 import org.apache.calcite.avatica.remote.Driver;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom JDBC driver that extends the Avatica remote driver specifically for handling connections to a Salesforce remote CIP database with
@@ -23,7 +22,7 @@ public class CIPDriver extends Driver {
     // ThreadLocal to store properties per thread
     public static ThreadLocal<Properties> connectionProperties = new ThreadLocal<>();
 
-    private static final Logger LOG = LogManager.getLogger(CIPDriver.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CIPDriver.class);
 
     public CIPDriver() {
     }
@@ -71,11 +70,6 @@ public class CIPDriver extends Driver {
     @Override
     public Connection connect(String url, Properties info) throws SQLException
     {
-
-        // Control logging based on the 'enableLogging' property in the Properties object
-        // Configure logging for the classes
-        LoggingManager.configureLogging(info);
-
         LOG.debug( "In connect method" );
 
         connectionProperties.set( info );
