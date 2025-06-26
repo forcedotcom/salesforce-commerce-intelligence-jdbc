@@ -450,4 +450,15 @@ public class CIPAvaticaHttpClientTest {
         boolean result2 = (boolean) m.invoke(testModeClient);
         assertTrue(result2);
     }
+
+    @Test
+    public void testClientVersion_StaticField_HappyPath() throws Exception {
+        java.lang.reflect.Field versionField = CIPAvaticaHttpClient.class.getDeclaredField("clientVersion");
+        versionField.setAccessible(true);
+        String version = (String) versionField.get(null);
+        assertNotNull(version);
+        assertFalse(version.isEmpty());
+        assertFalse("@project.version@".equals(version));
+        assertFalse("unknown".equals(version));
+    }
 }

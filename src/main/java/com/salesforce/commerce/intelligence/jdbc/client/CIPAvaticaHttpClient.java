@@ -35,8 +35,8 @@ import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NoHttpResponseException;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Custom implementation of AvaticaHttpClient that handles JWT-based OAuth2 authentication. It manages the lifecycle of a token, including
@@ -85,7 +85,7 @@ public class CIPAvaticaHttpClient
     private final String clientSecret;
     private final String instanceId;
 
-    private static final Logger LOG = LogManager.getLogger( CIPAvaticaHttpClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CIPAvaticaHttpClient.class);
 
     // Thread-safe store for session IDs associated with each connection
     // --------------------------------------------------------------------
@@ -110,6 +110,21 @@ public class CIPAvaticaHttpClient
     protected CloseableHttpClient client;
 
     protected HttpClientContext context;
+
+    private static String loadClientVersion() {
+        try (java.io.InputStream is = CIPAvaticaHttpClient.class.getClassLoader().getResourceAsStream("version.properties")) {
+            java.util.Properties props = new java.util.Properties();
+            if (is != null) {
+                props.load(is);
+                return props.getProperty("version", "unknown");
+            }
+        } catch (java.io.IOException e) {
+            // fallback to "unknown"
+        }
+        return "unknown";
+    }
+
+    private static String clientVersion = loadClientVersion();
 
     public CIPAvaticaHttpClient( URL url) {
         this.uri = toURI((URL)Objects.requireNonNull(url));
@@ -297,6 +312,7 @@ public class CIPAvaticaHttpClient
         post.setEntity(entity);
         post.setHeader("Authorization", "Bearer " + jwtToken);
         post.setHeader("InstanceId", instanceId);  // Attach InstanceId header
+        post.setHeader("X-Client-Version", clientVersion);
 
         // Attach session ID if available
         if ( sessionId != null) {
@@ -305,7 +321,10 @@ public class CIPAvaticaHttpClient
 
         // Add executeRequest header
         Service.Request genericReq = getGenericReq( request );
-        if ( genericReq instanceof Service.ExecuteRequest )
+        if ( genericReq instanceof Service.ExecuteRequest ||
+             genericReq instanceof Service.PrepareAndExecuteRequest ||
+             genericReq instanceof Service.PrepareAndExecuteBatchRequest ||
+             genericReq instanceof Service.ExecuteBatchRequest )
         {
             LOG.debug( "Setting {} header to {}", HEADER_REQUEST_TYPE, HEADER_REQUEST_QUERY_EXECUTE );
             post.setHeader( HEADER_REQUEST_TYPE, HEADER_REQUEST_QUERY_EXECUTE );
