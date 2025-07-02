@@ -130,6 +130,10 @@ public class CIPDriver extends Driver {
                 info.setProperty( BuiltInConnectionProperty.SERIALIZATION.camelName(), Serialization.PROTOBUF.name() );
             }
 
+            // Set the default fetch size to 1000 rows per request to match the server-side maximum frame size.
+            // This ensures efficient paging and prevents the client from requesting more rows than the server will return.
+            info.setProperty(BuiltInConnectionProperty.FETCH_SIZE.camelName(), "1000");
+
             info.setProperty( "instanceId", result.getDatabaseName() );
 
             // Specify the use of a custom HTTP client implementation for Avatica.
