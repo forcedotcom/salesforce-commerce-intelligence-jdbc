@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.23-SNAPSHOT</version>
+  <version>0.1.23</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
@@ -16,6 +16,7 @@
       <javaVersion>17</javaVersion>
       <javaFormatter.plugin.version>2.11.0</javaFormatter.plugin.version>
       <jacoco.version>0.8.12</jacoco.version>
+      <skipCentralPublishing>true</skipCentralPublishing>
   </properties>
 
   <licenses>
@@ -83,6 +84,7 @@
             <version>0.8.0</version>
             <extensions>true</extensions>
             <configuration>
+                <skipPublishing>${skipCentralPublishing}</skipPublishing>
                 <publishingServerId>central-public</publishingServerId>
             </configuration>
             </plugin>
