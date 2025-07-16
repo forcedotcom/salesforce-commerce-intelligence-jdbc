@@ -41,13 +41,7 @@
     <url>https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc</url>
   </scm>
 
-  <distributionManagement>
-    <repository>
-      <id>central-public</id>
-      <name>Central Repository</name>
-      <url>https://central.sonatype.com/repository/maven-releases/</url>
-    </repository>
-  </distributionManagement>
+
 
     <build>
 
@@ -78,16 +72,6 @@
             <!-- ======================================== -->
             <!-- Maven Central Publishing Configuration -->
             <!-- ======================================== -->
-            <plugin>
-            <groupId>org.sonatype.central</groupId>
-            <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>0.8.0</version>
-            <extensions>true</extensions>
-            <configuration>
-                <skipPublishing>${skipCentralPublishing}</skipPublishing>
-                <publishingServerId>central-public</publishingServerId>
-            </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
