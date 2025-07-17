@@ -4,21 +4,44 @@
 
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.22</version>
+  <version>0.1.23</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
-  <url>http://maven.apache.org</url>
+  <description>JDBC driver for Salesforce Commerce Intelligence Platform data connectors</description>
+  <url>https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
       <javaVersion>17</javaVersion>
       <javaFormatter.plugin.version>2.11.0</javaFormatter.plugin.version>
       <jacoco.version>0.8.12</jacoco.version>
+      <skipCentralPublishing>true</skipCentralPublishing>
   </properties>
 
-    <build>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
+  <developers>
+    <developer>
+      <name>Salesforce Commerce Intelligence Team</name>
+      <email>ccanalytics@salesforce.com</email>
+      <organization>Salesforce</organization>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/salesforce/cip-client-dataconnector.git</connection>
+    <developerConnection>scm:git:ssh://github.com:salesforce/cip-client-dataconnector.git</developerConnection>
+    <url>https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc</url>
+  </scm>
+
+    <build>
         <!--
           We use two <resource> blocks below:
           1. The first block enables filtering ONLY for version.properties, so Maven replaces @project.version@ with the actual version.
@@ -41,8 +64,11 @@
                 </excludes>
             </resource>
         </resources>
-
+    
         <plugins>
+            <!-- ======================================== -->
+            <!-- Standard Maven Build Plugins -->
+            <!-- ======================================== -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -208,6 +234,83 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>maven-central</id>
+            
+            <distributionManagement>
+                <repository>
+                    <id>central-public</id>
+                    <name>Central Repository</name>
+                    <url>https://central.sonatype.com/repository/maven-releases/</url>
+                </repository>
+            </distributionManagement>
+            
+            <build>
+                <plugins>
+                    <!-- ======================================== -->
+                    <!-- Maven Central Publishing Configuration -->
+                    <!-- ======================================== -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.8.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central-public</publishingServerId>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.3.2</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencies>
         <dependency>

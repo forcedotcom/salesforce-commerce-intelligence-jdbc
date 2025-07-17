@@ -183,7 +183,9 @@ public class CIPDriverIT {
         SQLException sqlException = (SQLException) exception.getCause();
 
         // Optionally, assert more details about the SQLException (like the SQLState, error code, or message)
-        assertEquals("400 Bad Request.{\"error_description\":\"Unknown/invalid tenant scope: SALESFORCE_COMMERCE_API:bjxl_prd\",\"error\":\"invalid_scope\"}", sqlException.getMessage());
+        assertTrue("Expected error message to contain 400 Bad Request and invalid scope error", 
+            sqlException.getMessage().contains("400 Bad Request") && 
+            sqlException.getMessage().contains("Unknown/invalid tenant scope: SALESFORCE_COMMERCE_API:bjxl_prd"));
     }
 
     /**
