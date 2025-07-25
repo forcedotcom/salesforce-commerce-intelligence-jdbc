@@ -256,7 +256,11 @@ public class CIPAvaticaHttpClient
                             LOG.debug( "Captured new session ID: {}", newSessionId );
                             sessionStore.put( connectionId, newSessionId );
                         }
-                        else
+                        // Log a warning only for the first request (OpenConnection),
+                        // since the session ID is expected in the response.
+                        // For all other requests, the app is not expected to echo the session ID,
+                        // so we should avoid logging a warning to prevent false positives.
+                        else if ( genericReq instanceof Service.OpenConnectionRequest )
                         {
                             LOG.warn( "Session ID not provided in response for connection ID: {}", connectionId );
                         }
