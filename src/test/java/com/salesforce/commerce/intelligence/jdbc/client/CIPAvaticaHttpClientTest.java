@@ -708,10 +708,10 @@ public class CIPAvaticaHttpClientTest {
                 CloseableHttpResponse.class, Service.Request.class, String.class);
         method.setAccessible(true);
 
-        Object result = method.invoke(cipAvaticaHttpClient, mockResponse, 
+        byte[] result = (byte[]) method.invoke(cipAvaticaHttpClient, mockResponse, 
                 new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
 
-        assertNull(result); // Should return null to signal retry
+        assertEquals(0, result.length); // Should return empty array to signal retry
     }
 
     @Test

@@ -198,13 +198,13 @@ public class CIPAvaticaHttpClient
         refreshJwtIfNeeded();
 
         while (true) {
-            HttpClientContext context = HttpClientContext.create();
+            HttpClientContext httpContext = HttpClientContext.create();
             HttpPost post = getHttpPost(request, sessionId);
 
-            try (CloseableHttpResponse response = this.execute(post, context)) {
+            try (CloseableHttpResponse response = this.execute(post, httpContext)) {
                 byte[] result = handleResponse(response, genericReq, connectionId);
-                if (result == null) {
-                    continue; // retry on null (e.g. 503)
+                if (result.length == 0) {
+                    continue; // retry on empty array (e.g. 503)
                 }
                 return result;
             } catch (NoHttpResponseException e) {
@@ -250,11 +250,11 @@ public class CIPAvaticaHttpClient
             handleInternalServerError(response);
         } else if (statusCode == 503) {
             LOG.warn("Failed to connect to server (HTTP/503), retrying");
-            return null;
+            return new byte[0];
         } else {
             handleUnexpectedStatus(response, statusCode);
         }
-        return null;
+        return new byte[0];
     }
 
     private byte[] handleSuccessResponse(CloseableHttpResponse response, Service.Request genericReq, String connectionId)
