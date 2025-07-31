@@ -196,14 +196,17 @@ public class CIPAvaticaHttpClient
         String sessionId = sessionStore.get(connectionId);
 
         refreshJwtIfNeeded();
-
-        while (true) {
+        int maxRetries = 5;
+        int attempt = 0;
+        while ( attempt < maxRetries ) {
             HttpClientContext httpContext = HttpClientContext.create();
             HttpPost post = getHttpPost(request, sessionId);
 
             try (CloseableHttpResponse response = this.execute(post, httpContext)) {
                 byte[] result = handleResponse(response, genericReq, connectionId);
                 if (result.length == 0) {
+                    attempt++;
+                    LOG.warn("Empty response, retry attempt {}", attempt);
                     continue; // retry on empty array (e.g. 503)
                 }
                 return result;
@@ -216,6 +219,7 @@ public class CIPAvaticaHttpClient
                 throw new RuntimeException(e);
             }
         }
+        throw new RuntimeException("Max retry attempts reached for 503 responses.");
     }
 
     private String logAndExtractConnectionId(Service.Request genericReq) {
