@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
@@ -40,6 +41,7 @@ import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.junit.Before;
 import org.junit.Test;
+import org.apache.hc.core5.http.NoHttpResponseException;
 
 public class CIPAvaticaHttpClientTest {
     private static final String HEADER_SESSION_ID = "x-session-id";
@@ -460,5 +462,380 @@ public class CIPAvaticaHttpClientTest {
         assertFalse(version.isEmpty());
         assertFalse("@project.version@".equals(version));
         assertFalse("unknown".equals(version));
+    }
+
+    @Test
+    public void testLogAndExtractConnectionId_WithValidConnectionId() throws Exception {
+        // Create a real OpenConnectionRequest with a connection ID
+        Service.OpenConnectionRequest request = new Service.OpenConnectionRequest("test-connection-id", null);
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("logAndExtractConnectionId",
+                Service.Request.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(cipAvaticaHttpClient, request);
+
+        assertEquals("test-connection-id", result);
+    }
+
+    @Test
+    public void testLogAndExtractConnectionId_WithNullConnectionId() throws Exception {
+        // Create a mock request that will return null connection ID
+        Service.Request mockRequest = mock(Service.Request.class);
+        when(mockProtobufTranslation.parseRequest(any())).thenReturn(mockRequest);
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("logAndExtractConnectionId",
+                Service.Request.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(cipAvaticaHttpClient, mockRequest);
+
+        assertNull(result);
+    }
+
+    @Test
+    public void testHandleSuccessResponse_WithSessionHeader() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response with session header
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        Header sessionHeader = mock(Header.class);
+        when(sessionHeader.getValue()).thenReturn("new-session-id");
+        when(mockResponse.getHeader(HEADER_SESSION_ID)).thenReturn(sessionHeader);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("response".getBytes(), ContentType.APPLICATION_OCTET_STREAM));
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleSuccessResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        byte[] result = (byte[]) method.invoke(cipAvaticaHttpClient, mockResponse, 
+                new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
+
+        assertNotNull(result);
+        assertEquals("response", new String(result));
+        
+        // Verify session was stored
+        assertEquals("new-session-id", CIPAvaticaHttpClient.sessionStore.get("test-connection-id"));
+    }
+
+    @Test
+    public void testHandleSuccessResponse_WithoutSessionHeader_OpenConnectionRequest() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response without session header
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getHeader(HEADER_SESSION_ID)).thenReturn(null);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("response".getBytes(), ContentType.APPLICATION_OCTET_STREAM));
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleSuccessResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        byte[] result = (byte[]) method.invoke(cipAvaticaHttpClient, mockResponse, 
+                new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
+
+        assertNotNull(result);
+        assertEquals("response", new String(result));
+    }
+
+    @Test
+    public void testHandleSuccessResponse_WithoutSessionHeader_NonOpenConnectionRequest() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response without session header
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getHeader(HEADER_SESSION_ID)).thenReturn(null);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("response".getBytes(), ContentType.APPLICATION_OCTET_STREAM));
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleSuccessResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        // Use a non-OpenConnectionRequest type
+        Service.ExecuteRequest executeRequest = new Service.ExecuteRequest(
+                new Meta.StatementHandle("test-connection-id", 1, null), 
+                Collections.emptyList(), 100);
+
+        byte[] result = (byte[]) method.invoke(cipAvaticaHttpClient, mockResponse, executeRequest, "test-connection-id");
+
+        assertNotNull(result);
+        assertEquals("response", new String(result));
+    }
+
+    @Test
+    public void testHandleInternalServerError_WithResponseBody() throws Exception {
+        // Mock response with entity
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("Server error details".getBytes(), ContentType.TEXT_PLAIN));
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleInternalServerError",
+                CloseableHttpResponse.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse);
+            fail("Expected SQLException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof SQLException);
+            assertTrue(e.getCause().getMessage().contains("Server responded with HTTP 500"));
+            assertTrue(e.getCause().getMessage().contains("Server error details"));
+        }
+    }
+
+    @Test
+    public void testHandleInternalServerError_WithoutResponseBody() throws Exception {
+        // Mock response without entity
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getEntity()).thenReturn(null);
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleInternalServerError",
+                CloseableHttpResponse.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse);
+            fail("Expected SQLException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof SQLException);
+            assertTrue(e.getCause().getMessage().contains("Server responded with HTTP 500"));
+            assertTrue(e.getCause().getMessage().contains("No response body"));
+        }
+    }
+
+    @Test
+    public void testHandleUnexpectedStatus_WithResponseBody() throws Exception {
+        // Mock response with entity
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("Error details".getBytes(), ContentType.TEXT_PLAIN));
+        when(mockResponse.getReasonPhrase()).thenReturn("Bad Request");
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleUnexpectedStatus",
+                CloseableHttpResponse.class, int.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse, 400);
+            fail("Expected RuntimeException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof RuntimeException);
+            assertTrue(e.getCause().getMessage().contains("HTTP request failed with status code 400"));
+            assertTrue(e.getCause().getMessage().contains("Error details"));
+        }
+    }
+
+    @Test
+    public void testHandleUnexpectedStatus_WithoutResponseBody() throws Exception {
+        // Mock response without entity
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getEntity()).thenReturn(null);
+        when(mockResponse.getReasonPhrase()).thenReturn("Not Found");
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleUnexpectedStatus",
+                CloseableHttpResponse.class, int.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse, 404);
+            fail("Expected RuntimeException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof RuntimeException);
+            assertTrue(e.getCause().getMessage().contains("HTTP request failed with status code 404"));
+        }
+    }
+
+    @Test
+    public void testHandleResponse_500Error() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response with 500 status
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getCode()).thenReturn(500);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("Server error".getBytes(), ContentType.TEXT_PLAIN));
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse, 
+                    new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
+            fail("Expected SQLException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof SQLException);
+        }
+    }
+
+    @Test
+    public void testHandleResponse_503Error() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response with 503 status
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getCode()).thenReturn(503);
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        byte[] result = (byte[]) method.invoke(cipAvaticaHttpClient, mockResponse, 
+                new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
+
+        assertEquals(0, result.length); // Should return empty array to signal retry
+    }
+
+    @Test
+    public void testHandleResponse_404Error() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response with 404 status
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getCode()).thenReturn(404);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("Not found".getBytes(), ContentType.TEXT_PLAIN));
+        when(mockResponse.getReasonPhrase()).thenReturn("Not Found");
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("handleResponse", 
+                CloseableHttpResponse.class, Service.Request.class, String.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(cipAvaticaHttpClient, mockResponse, 
+                    new Service.OpenConnectionRequest("test-connection-id", null), "test-connection-id");
+            fail("Expected RuntimeException to be thrown");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof RuntimeException);
+            assertTrue(e.getCause().getMessage().contains("HTTP request failed with status code 404"));
+        }
+    }
+
+    @Test
+    public void testSend_WithTryWithResources() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock response
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getCode()).thenReturn(200);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("response".getBytes(), ContentType.APPLICATION_OCTET_STREAM));
+
+        // Mock client to return the response
+        when(cipAvaticaHttpClient.client.execute(any(HttpPost.class), any(HttpClientContext.class))).thenReturn(mockResponse);
+
+        // Call send method
+        byte[] result = cipAvaticaHttpClient.send("request".getBytes());
+
+        assertNotNull(result);
+        assertEquals("response", new String(result));
+        
+        // Verify response was closed (try-with-resources behavior)
+        verify(mockResponse).close();
+    }
+
+    @Test
+    public void testSend_NoHttpResponseException_Retry() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock client to throw NoHttpResponseException first, then return success
+        CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
+        when(mockResponse.getCode()).thenReturn(200);
+        when(mockResponse.getEntity()).thenReturn(new ByteArrayEntity("response".getBytes(), ContentType.APPLICATION_OCTET_STREAM));
+
+        when(cipAvaticaHttpClient.client.execute(any(HttpPost.class), any(HttpClientContext.class)))
+                .thenThrow(new NoHttpResponseException("No response"))
+                .thenReturn(mockResponse);
+
+        // Call send method
+        byte[] result = cipAvaticaHttpClient.send("request".getBytes());
+
+        assertNotNull(result);
+        assertEquals("response", new String(result));
+    }
+
+    @Test
+    public void testSend_GenericException_WrappedInRuntimeException() throws Exception {
+        // Mock token response
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "mock-token");
+        tokenResponse.put("expires_in", "3600");
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Mock client to throw a generic exception
+        when(cipAvaticaHttpClient.client.execute(any(HttpPost.class), any(HttpClientContext.class)))
+                .thenThrow(new IOException("Network error"));
+
+        try {
+            cipAvaticaHttpClient.send("request".getBytes());
+            fail("Expected RuntimeException to be thrown");
+        } catch (RuntimeException e) {
+            assertTrue(e.getCause() instanceof IOException);
+            assertEquals("Network error", e.getCause().getMessage());
+        }
+    }
+
+    @Test
+    public void testRefreshJwtIfNeeded_TokenExpired() throws Exception {
+        // Set token to be expired
+        cipAvaticaHttpClient.tokenExpiryTimeMs = System.currentTimeMillis() - 1000; // 1 second ago
+
+        // Mock token response with proper structure
+        Map<String, String> tokenResponse = new HashMap<>();
+        tokenResponse.put("access_token", "new-token");
+        tokenResponse.put("expires_in", "3600");
+        
+        // Reset the mock to ensure clean state
+        org.mockito.Mockito.reset(mockAuthService);
+        when(mockAuthService.getAMAccessToken(anyString(), anyString(), anyString(), anyString())).thenReturn(tokenResponse);
+
+        // Use reflection to call the private method
+        java.lang.reflect.Method method = cipAvaticaHttpClient.getClass().getDeclaredMethod("refreshJwtIfNeeded");
+        method.setAccessible(true);
+
+        // Should not throw any exception
+        method.invoke(cipAvaticaHttpClient);
+
+        // Verify auth service was called
+        verify(mockAuthService).getAMAccessToken(anyString(), anyString(), anyString(), anyString());
     }
 }

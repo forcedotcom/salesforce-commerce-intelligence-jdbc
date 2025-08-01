@@ -33,6 +33,8 @@ import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NoHttpResponseException;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.ProtocolException;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.slf4j.Logger;
@@ -187,122 +189,114 @@ public class CIPAvaticaHttpClient
     }
 
     public byte[] send(byte[] request) {
-
         LOG.debug("Sending request to Avatica server.");
 
+        Service.Request genericReq = getGenericReq(request);
+        String connectionId = logAndExtractConnectionId(genericReq);
+        String sessionId = sessionStore.get(connectionId);
 
-        Service.Request genericReq = getGenericReq( request );
+        refreshJwtIfNeeded();
+        int maxRetries = 5;
+        int attempt = 0;
+        while ( attempt < maxRetries ) {
+            HttpClientContext httpContext = HttpClientContext.create();
+            HttpPost post = getHttpPost(request, sessionId);
 
-        // Attempt to extract connectionId dynamically
+            try (CloseableHttpResponse response = this.execute(post, httpContext)) {
+                byte[] result = handleResponse(response, genericReq, connectionId);
+                if (result.length == 0) {
+                    attempt++;
+                    LOG.warn("Empty response, retry attempt {}", attempt);
+                    continue; // retry on empty array (e.g. 503)
+                }
+                return result;
+            } catch (NoHttpResponseException e) {
+                LOG.debug("The Avatica server failed to issue an HTTP response, retrying");
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                LOG.debug("Failed to execute HTTP request", e);
+                throw new RuntimeException(e);
+            }
+        }
+        throw new RuntimeException("Max retry attempts reached for 503 responses.");
+    }
+
+    private String logAndExtractConnectionId(Service.Request genericReq) {
         String connectionId = extractConnectionId(genericReq);
         if (connectionId != null) {
             LOG.debug("Extracted Connection ID: {}", connectionId);
         } else {
             LOG.warn("Unable to extract Connection ID for request type: {}", genericReq.getClass().getSimpleName());
         }
+        return connectionId;
+    }
 
-        String sessionId = sessionStore.get(connectionId);
-
-        // Check if the JWT token needs to be generated or refreshed
+    private void refreshJwtIfNeeded() {
         if (isTokenExpiredOrMissing()) {
             try {
                 LOG.debug("Refreshing JWT token.");
                 refreshToken();
                 LOG.debug("JWT token refreshed.");
-            } catch ( SQLException e) {
+            } catch (SQLException e) {
                 LOG.error("Failed to generate or refresh JWT token.", e);
                 throw new RuntimeException("Failed to generate or refresh JWT token.", e);
             }
         }
+    }
 
+    private byte[] handleResponse(CloseableHttpResponse response, Service.Request genericReq, String connectionId) throws Exception {
+        int statusCode = response.getCode();
 
-
-        while(true) {
-            HttpClientContext context = HttpClientContext.create();
-
-            HttpPost post = getHttpPost( request, sessionId );
-
-            try {
-                CloseableHttpResponse response = this.execute(post, context);
-                Throwable throwable = null;
-
-                byte[] bytes = new byte[0];
-                try {
-                    int statusCode = response.getCode();
-                    if (200 != statusCode && 500 != statusCode) {
-                        if (503 == statusCode) {
-                            LOG.warn("Failed to connect to server (HTTP/503), retrying");
-                            continue;
-                        }
-
-                        if (response.getEntity() != null) {
-                                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                                LOG.error("HTTP request failed with status code {}: {}. Errors: {}", statusCode, response.getReasonPhrase(), responseBody);
-                                throw new RuntimeException(String.format("HTTP request failed with status code %d: %s. Errors: %s", statusCode, response.getReasonPhrase(), responseBody));
-                        } else {
-                            LOG.error("HTTP request failed with status code {}: {}", statusCode, response.getReasonPhrase());
-                            throw new RuntimeException(String.format("HTTP request failed with status code %d: %s", statusCode, response.getReasonPhrase()));
-                        }
-
-                    }
-
-                    if( statusCode == HttpURLConnection.HTTP_OK )
-                    {
-                        Header sessionHeader = response.getHeader( HEADER_SESSION_ID );
-                        String newSessionId = ( sessionHeader != null ) ? sessionHeader.getValue() : null;
-
-                        if ( newSessionId != null )
-                        {
-                            LOG.debug( "Captured new session ID: {}", newSessionId );
-                            sessionStore.put( connectionId, newSessionId );
-                        }
-                        else
-                        {
-                            LOG.warn( "Session ID not provided in response for connection ID: {}", connectionId );
-                        }
-                        bytes = EntityUtils.toByteArray(response.getEntity());
-                    }
-                    else if (statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
-                        // Log the error response for debugging
-                        String errorMessage = null;
-                        if (response.getEntity() != null) {
-                            errorMessage = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                            LOG.error("Received 500 Internal Server Error: {}", errorMessage);
-                        } else {
-                            LOG.error("Received 500 Internal Server Error with no response body.");
-                        }
-
-                        // Throw a runtime exception with relevant error details
-                        throw new SQLException("Server responded with HTTP 500: Internal Server Error. Details: " + errorMessage);
-                    }
-                } catch (Throwable throwable1) {
-                    throwable = throwable1;
-                    throw throwable1;
-                } finally {
-                    if (response != null) {
-                        if (throwable != null) {
-                            try {
-                                response.close();
-                            } catch (Throwable var20) {
-                                throwable.addSuppressed(var20);
-                            }
-                        } else {
-                            response.close();
-                        }
-                    }
-
-                }
-
-                return bytes;
-            } catch (NoHttpResponseException var23) {
-                LOG.debug("The Avatica server failed to issue an HTTP response, retrying");
-            } catch (RuntimeException var24) {
-                throw var24;
-            } catch (Exception exception) {
-                LOG.debug("Failed to execute HTTP request", exception);
-                throw new RuntimeException(exception);
-            }
+        if (statusCode == HttpURLConnection.HTTP_OK) {
+            return handleSuccessResponse(response, genericReq, connectionId);
+        } else if (statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
+            handleInternalServerError(response);
+        } else if (statusCode == 503) {
+            LOG.warn("Failed to connect to server (HTTP/503), retrying");
+            return new byte[0];
+        } else {
+            handleUnexpectedStatus(response, statusCode);
         }
+        return new byte[0];
+    }
+
+    private byte[] handleSuccessResponse(CloseableHttpResponse response, Service.Request genericReq, String connectionId)
+                    throws IOException, ProtocolException
+    {
+        Header sessionHeader = response.getHeader(HEADER_SESSION_ID);
+        String newSessionId = (sessionHeader != null) ? sessionHeader.getValue() : null;
+
+        if (newSessionId != null) {
+            LOG.debug("Captured new session ID: {}", newSessionId);
+            sessionStore.put(connectionId, newSessionId);
+        } else if (genericReq instanceof Service.OpenConnectionRequest) {
+            LOG.warn("Session ID not provided in response for connection ID: {}", connectionId);
+        }
+        return EntityUtils.toByteArray(response.getEntity());
+    }
+
+    private void handleInternalServerError(CloseableHttpResponse response)
+                    throws SQLException, IOException, ParseException
+    {
+        String errorMessage = (response.getEntity() != null) ?
+                        EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8) :
+                        "No response body.";
+        LOG.error("Received 500 Internal Server Error: {}", errorMessage);
+        throw new SQLException("Server responded with HTTP 500: Internal Server Error. Details: " + errorMessage);
+    }
+
+    private void handleUnexpectedStatus(CloseableHttpResponse response, int statusCode)
+                    throws IOException, ParseException
+    {
+        String responseBody = (response.getEntity() != null) ?
+                        EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8) :
+                        "";
+        LOG.error("HTTP request failed with status code {}: {}. Errors: {}", statusCode, response.getReasonPhrase(), responseBody);
+        throw new RuntimeException(String.format(
+                        "HTTP request failed with status code %d: %s. Errors: %s",
+                        statusCode, response.getReasonPhrase(), responseBody
+        ));
     }
 
     HttpPost getHttpPost( byte[] request, String sessionId )
