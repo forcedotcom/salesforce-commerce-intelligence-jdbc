@@ -87,7 +87,7 @@ def publishToPublicGitHub(version) {
             
             # Commit and push the JARs 
             cp ./target/cip-client-dataconnector-${version}.jar .
-            git add ./cip-client-dataconnector-${version}.jar ./src/**/* ./pom.xml ./README.md
+            git add ./cip-client-dataconnector-${version}.jar ./src/**/* ./pom.xml ./README.md ./CODEOWNERS ./CODE_OF_CONDUCT.md ./LICENSE.txt ./SECURITY.md
             git commit -m "Upload src content and JAR files to version ${version}"
 
             # Push the main branch first
