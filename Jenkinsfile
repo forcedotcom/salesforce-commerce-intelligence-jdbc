@@ -10,7 +10,7 @@ import net.sfdc.dci.BuildUtils
 import net.sfdc.dci.MavenUtils
 import net.sfdc.dci.CodeCoverageUtils
 
-def envDef = [buildImage: '871501607754.dkr.ecr.us-west-2.amazonaws.com/sfci/cc-commerce-intelligence-platform/cip-build-image:1.0.1']
+def envDef = [buildImage: '331455399823.dkr.ecr.us-east-2.amazonaws.com/sfci/cc-commerce-intelligence-platform/cip-build-image:1.1.2-deploy']
 def serviceName = "client-dataconnector"
 def serverImagetag = "cip-dataconnector-client"
 def publicGitHubRepo = "https://github.com/forcedotcom/salesforce-commerce-intelligence-jdbc.git"
