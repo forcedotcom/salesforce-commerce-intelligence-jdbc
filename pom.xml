@@ -91,6 +91,29 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>shaded</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Driver-Class>com.salesforce.commerce.intelligence.jdbc.client.CIPDriver</Driver-Class>
+                                    </manifestEntries>
+                                </transformer>
+                            </transformers>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -315,22 +338,47 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.calcite.avatica</groupId>
-            <artifactId>avatica</artifactId>
+            <artifactId>avatica-core</artifactId>
             <version>1.25.0</version>
         </dependency>
 
+        <!-- Apache HttpClient5 Dependencies (required by avatica-core and CIP code) -->
+        <!-- Using 'optional=true' makes the unshaded JAR future-proof - these dependencies won't -->
+        <!-- be transitive, so consumers (like ECOM) use their own versions. The shaded JAR bundles them. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.5</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5</artifactId>
+            <version>5.3.4</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5-h2</artifactId>
+            <version>5.3.4</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Spring Framework Core Dependencies -->
+        <!-- Using 'optional=true' for shaded JAR inclusion while keeping unshaded JAR future-proof -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
-            <version>5.3.20</version> <!-- Use the latest version or the specific version you need -->
+            <version>5.3.20</version>
+            <optional>true</optional>
         </dependency>
 
         <!-- Spring Web Dependency (includes RestTemplate) -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
-            <version>5.3.20</version> <!-- Use the latest version or the specific version you need -->
+            <version>5.3.20</version>
+            <optional>true</optional>
         </dependency>
 
         <!-- Needed for RestTemplate -->
@@ -338,6 +386,7 @@
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-cbor</artifactId>
             <version>2.17.2</version>
+            <optional>true</optional>
         </dependency>
 
         <!-- logging dependency -->
@@ -345,12 +394,14 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.0.9</version>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.2.11</version>
+            <optional>true</optional>
         </dependency>
 
         <!-- Test dependencies -->
