@@ -71,6 +71,16 @@
             <!-- ======================================== -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                    <release>11</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
@@ -364,27 +374,10 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Framework Core Dependencies -->
-        <!-- Using 'optional=true' for shaded JAR inclusion while keeping unshaded JAR future-proof -->
+        <!-- Jackson for JSON parsing (used by AmAuthService for OAuth token parsing) -->
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>5.3.20</version>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Spring Web Dependency (includes RestTemplate) -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
-            <version>5.3.20</version>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Needed for RestTemplate -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-cbor</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
             <optional>true</optional>
         </dependency>
