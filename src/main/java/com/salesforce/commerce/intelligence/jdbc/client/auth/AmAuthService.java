@@ -38,7 +38,7 @@ public class AmAuthService {
      * Constructs an AmAuthService instance and initializes the HTTP client with JSON parser.
      */
     public AmAuthService() {
-        httpClient = HttpClient.newHttpClient();
+        httpClient = HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(30)).build();
         objectMapper = new ObjectMapper();
     }
 
@@ -89,9 +89,17 @@ public class AmAuthService {
                                 {
                                 } );
 
+                String accessToken = responseBody.get( "access_token" );
+                String expiresIn = responseBody.get( "expires_in" );
+
+                if ( accessToken == null || expiresIn == null )
+                {
+                    throw new SQLException( "Invalid OAuth response: missing access_token or expires_in" );
+                }
+
                 Map<String, String> tokenAndExpiresIn = new HashMap<>();
-                tokenAndExpiresIn.put( "access_token", responseBody.get( "access_token" ) );
-                tokenAndExpiresIn.put( "expires_in", responseBody.get( "expires_in" ) );
+                tokenAndExpiresIn.put( "access_token", accessToken );
+                tokenAndExpiresIn.put( "expires_in", expiresIn );
                 return tokenAndExpiresIn;
             }
             else if ( response.statusCode() == 401 )
@@ -102,11 +110,19 @@ public class AmAuthService {
             {
                 throw new SQLException( "400 Bad Request: " + response.body() );
             }
+            else
+            {
+                throw new SQLException( "OAuth request failed with status " + response.statusCode() + ": " + response.body() );
+            }
         }
-        catch ( IOException | InterruptedException e )
+        catch ( IOException e )
         {
             throw new SQLException( "Failed to retrieve OAuth token: " + e.getMessage(), e );
         }
-        return null;
+        catch ( InterruptedException e )
+        {
+            Thread.currentThread().interrupt();
+            throw new SQLException( "OAuth token retrieval interrupted: " + e.getMessage(), e );
+        }
     }
 }
