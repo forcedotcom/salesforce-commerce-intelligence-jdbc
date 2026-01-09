@@ -1,22 +1,19 @@
 package com.salesforce.commerce.intelligence.jdbc.client.auth;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * AmAuthService is responsible for obtaining OAuth tokens from the Account Manager service using client credentials. A single client ID can
@@ -34,15 +31,22 @@ public class AmAuthService {
 
     private static final String PRD_AM_OAUTH_URL = PRD_AM_OAUTH_HOST + AM_CLIENT_INFO_BASEPATH;
 
-    private RestTemplate restTemplate;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
     /**
-     * Constructs an AmAuthService instance and initializes the RestTemplate with JSON message converter.
+     * Constructs an AmAuthService instance and initializes the HTTP client with JSON parser.
      */
     public AmAuthService() {
-        restTemplate = new RestTemplate();
-        // Add the JSON message converter to handle JSON responses
-        restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+        this(HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(30)).build(), new ObjectMapper());
+    }
+
+    /**
+     * Package-private constructor for testing with mock HttpClient.
+     */
+    AmAuthService(HttpClient httpClient, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -65,57 +69,67 @@ public class AmAuthService {
 
         // Build Authorization header with Base64 encoded client ID and secret
         String authHeader = "Basic " + Base64.getEncoder()
-                        .encodeToString( ( amClientId + ":" + amClientSecret ).getBytes() );
+                        .encodeToString( ( amClientId + ":" + amClientSecret ).getBytes( StandardCharsets.UTF_8 ) );
 
-        // Set headers for the request
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType( MediaType.APPLICATION_FORM_URLENCODED );
-        headers.set( "Authorization", authHeader );
+        // Build form-encoded request body
+        String formData = "grant_type=" + URLEncoder.encode( "client_credentials", StandardCharsets.UTF_8 )
+                        + "&scope=" + URLEncoder.encode( "SALESFORCE_COMMERCE_API:" + instanceId, StandardCharsets.UTF_8 );
 
-        // Set form parameters
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add( "grant_type", "client_credentials" );
-        formData.add( "scope", "SALESFORCE_COMMERCE_API" + ":" + instanceId );
-
-        // Build request entity
-        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>( formData, headers );
+        // Build HTTP request
+        HttpRequest request = HttpRequest.newBuilder()
+                        .uri( URI.create( tokenEndpoint ) )
+                        .header( "Authorization", authHeader )
+                        .header( "Content-Type", "application/x-www-form-urlencoded" )
+                        .POST( HttpRequest.BodyPublishers.ofString( formData ) )
+                        .build();
 
         try
         {
             // Send POST request to the OAuth service
-            ResponseEntity<Map<String, String>> response =
-                            restTemplate.exchange( tokenEndpoint, HttpMethod.POST, requestEntity,
-                                            new ParameterizedTypeReference<Map<String, String>>()
-                                            {
-                                            } );
+            HttpResponse<String> response = httpClient.send( request, HttpResponse.BodyHandlers.ofString() );
 
             // Extract and return the access token from the response
-            if ( response.getStatusCode().is2xxSuccessful() )
+            if ( response.statusCode() >= 200 && response.statusCode() < 300 )
             {
-                Map tokenAndExpiresIn = new HashMap<>();
-                tokenAndExpiresIn.put("access_token", response.getBody().get( "access_token" ));
-                tokenAndExpiresIn.put( "expires_in",  response.getBody().get( "expires_in" ));
-                return tokenAndExpiresIn;
-            }
-        }
-        catch ( HttpClientErrorException e )
-        {
-            if ( e.getStatusCode().is4xxClientError() )
-            {
-                if ( e.getStatusCode() == HttpStatus.UNAUTHORIZED )
+                Map<String, String> responseBody = objectMapper.readValue( response.body(),
+                                new TypeReference<Map<String, String>>()
+                                {
+                                } );
+
+                String accessToken = responseBody.get( "access_token" );
+                String expiresIn = responseBody.get( "expires_in" );
+
+                if ( accessToken == null || expiresIn == null )
                 {
-                    throw new SQLException( "401 Unauthorized. Please verify your username and password." );
-                }
-                else if ( e.getStatusCode() == HttpStatus.BAD_REQUEST )
-                {
-                    throw new SQLException( "400 Bad Request." + e.getResponseBodyAsString() );
+                    throw new SQLException( "Invalid OAuth response: missing access_token or expires_in" );
                 }
 
+                Map<String, String> tokenAndExpiresIn = new HashMap<>();
+                tokenAndExpiresIn.put( "access_token", accessToken );
+                tokenAndExpiresIn.put( "expires_in", expiresIn );
+                return tokenAndExpiresIn;
             }
-        } catch(Exception e)
-        {
-            throw new SQLException( e.getMessage() );
+            else if ( response.statusCode() == 401 )
+            {
+                throw new SQLException( "401 Unauthorized. Please verify your username and password." );
+            }
+            else if ( response.statusCode() == 400 )
+            {
+                throw new SQLException( "400 Bad Request: " + response.body() );
+            }
+            else
+            {
+                throw new SQLException( "OAuth request failed with status " + response.statusCode() + ": " + response.body() );
+            }
         }
-        return null;
+        catch ( IOException e )
+        {
+            throw new SQLException( "Failed to retrieve OAuth token: " + e.getMessage(), e );
+        }
+        catch ( InterruptedException e )
+        {
+            Thread.currentThread().interrupt();
+            throw new SQLException( "OAuth token retrieval interrupted: " + e.getMessage(), e );
+        }
     }
 }
