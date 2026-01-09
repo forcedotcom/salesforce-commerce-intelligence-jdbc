@@ -38,8 +38,15 @@ public class AmAuthService {
      * Constructs an AmAuthService instance and initializes the HTTP client with JSON parser.
      */
     public AmAuthService() {
-        httpClient = HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(30)).build();
-        objectMapper = new ObjectMapper();
+        this(HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(30)).build(), new ObjectMapper());
+    }
+
+    /**
+     * Package-private constructor for testing with mock HttpClient.
+     */
+    AmAuthService(HttpClient httpClient, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
 
     /**

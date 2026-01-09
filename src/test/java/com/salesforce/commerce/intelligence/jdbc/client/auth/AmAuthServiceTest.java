@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -79,6 +82,107 @@ public class AmAuthServiceTest {
             fail("Expected SQLException due to connection failure");
         } catch (SQLException e) {
             assertTrue(e.getMessage().contains("Failed to retrieve OAuth token"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetAMAccessToken_403Forbidden() throws Exception {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpResponse<String> mockResponse = mock(HttpResponse.class);
+
+        when(mockResponse.statusCode()).thenReturn(403);
+        when(mockResponse.body()).thenReturn("Forbidden");
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        AmAuthService mockAuthService = new AmAuthService(mockHttpClient, new ObjectMapper());
+
+        try {
+            mockAuthService.getAMAccessToken("https://test.example.com", "clientId", "secret", "instance");
+            fail("Expected SQLException for 403 Forbidden");
+        } catch (SQLException e) {
+            assertTrue("Should contain status code", e.getMessage().contains("403"));
+            assertTrue("Should contain 'OAuth request failed'", e.getMessage().contains("OAuth request failed"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetAMAccessToken_500InternalServerError() throws Exception {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpResponse<String> mockResponse = mock(HttpResponse.class);
+
+        when(mockResponse.statusCode()).thenReturn(500);
+        when(mockResponse.body()).thenReturn("Internal Server Error");
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        AmAuthService mockAuthService = new AmAuthService(mockHttpClient, new ObjectMapper());
+
+        try {
+            mockAuthService.getAMAccessToken("https://test.example.com", "clientId", "secret", "instance");
+            fail("Expected SQLException for 500 Internal Server Error");
+        } catch (SQLException e) {
+            assertTrue("Should contain status code", e.getMessage().contains("500"));
+            assertTrue("Should contain 'OAuth request failed'", e.getMessage().contains("OAuth request failed"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetAMAccessToken_InterruptedException() throws Exception {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenThrow(
+                new InterruptedException("Thread interrupted"));
+
+        AmAuthService mockAuthService = new AmAuthService(mockHttpClient, new ObjectMapper());
+
+        try {
+            mockAuthService.getAMAccessToken("https://test.example.com", "clientId", "secret", "instance");
+            fail("Expected SQLException for InterruptedException");
+        } catch (SQLException e) {
+            assertTrue("Should contain 'interrupted'", e.getMessage().contains("interrupted"));
+            assertTrue("Thread interrupt flag should be set", Thread.interrupted());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetAMAccessToken_MissingAccessToken() throws Exception {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpResponse<String> mockResponse = mock(HttpResponse.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn("{\"expires_in\":\"3600\"}");
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        AmAuthService mockAuthService = new AmAuthService(mockHttpClient, new ObjectMapper());
+
+        try {
+            mockAuthService.getAMAccessToken("https://test.example.com", "clientId", "secret", "instance");
+            fail("Expected SQLException for missing access_token");
+        } catch (SQLException e) {
+            assertTrue("Should mention missing fields", e.getMessage().contains("missing access_token or expires_in"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetAMAccessToken_MissingExpiresIn() throws Exception {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpResponse<String> mockResponse = mock(HttpResponse.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn("{\"access_token\":\"test-token\"}");
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        AmAuthService mockAuthService = new AmAuthService(mockHttpClient, new ObjectMapper());
+
+        try {
+            mockAuthService.getAMAccessToken("https://test.example.com", "clientId", "secret", "instance");
+            fail("Expected SQLException for missing expires_in");
+        } catch (SQLException e) {
+            assertTrue("Should mention missing fields", e.getMessage().contains("missing access_token or expires_in"));
         }
     }
 }
