@@ -6,7 +6,10 @@ The CIP JDBC Driver allows you to connect your analytics and BI tools to your Sa
 
 Download the JDBC driver JAR from the root of this repository.
 
-Example file: `cip-client-dataconnector-x.x.xx.jar`
+**Starting with version 0.1.25**, the JAR file includes `-shaded` in the filename:
+- Example: `cip-client-dataconnector-0.1.25-shaded.jar`
+
+The driver is self-contained and includes all required dependencies.
 
 ## Quick Start
 
