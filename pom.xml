@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.25</version>
+  <version>0.1.26</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
@@ -69,6 +69,14 @@
             <!-- ======================================== -->
             <!-- Standard Maven Build Plugins -->
             <!-- ======================================== -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${javaVersion}</release>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -364,28 +372,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Framework Core Dependencies -->
-        <!-- Using 'optional=true' for shaded JAR inclusion while keeping unshaded JAR future-proof -->
+        <!-- Jackson for JSON parsing (used by AmAuthService for OAuth token parsing) -->
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>5.3.20</version>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Spring Web Dependency (includes RestTemplate) -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
-            <version>5.3.20</version>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Needed for RestTemplate -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-cbor</artifactId>
-            <version>2.17.2</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.17.3</version>
             <optional>true</optional>
         </dependency>
 
