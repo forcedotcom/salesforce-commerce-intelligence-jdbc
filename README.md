@@ -56,7 +56,7 @@ You can override the fetch size using the `fetchSize` connection property, but v
 
 ## Logging
 
-This driver uses SLF4J with Logback. The shaded JAR does **not** ship a `logback.xml` — logging is controlled entirely by the host application (DBeaver, your Java app, etc.). By default, if no `logback.xml` is present on the classpath, only `ERROR`-level messages are printed to the console.
+This driver uses SLF4J with Logback. Neither the shaded nor the unshaded JAR ships a `logback.xml` — logging is controlled entirely by the host application (DBeaver, ECOM, your Java app, etc.). By default, if no `logback.xml` is present on the classpath, only `ERROR`-level messages are printed to the console.
 
 ### Logger Names
 

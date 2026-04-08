@@ -87,6 +87,9 @@
                             <Driver-Class>com.salesforce.commerce.intelligence.jdbc.client.CIPDriver</Driver-Class>
                         </manifestEntries>
                     </archive>
+                    <excludes>
+                        <exclude>logback.xml</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
