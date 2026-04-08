@@ -4,7 +4,7 @@
 
   <groupId>com.salesforce.commerce.intelligence.jdbc.client</groupId>
   <artifactId>cip-client-dataconnector</artifactId>
-  <version>0.1.27</version>
+  <version>0.1.28</version>
   <packaging>jar</packaging>
 
   <name>cip-client-dataconnector</name>
@@ -53,14 +53,14 @@
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
                 <includes>
-                    <include>version.properties</include>
+                    <include>META-INF/cip-version.properties</include>
                 </includes>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
                 <excludes>
-                    <exclude>version.properties</exclude>
+                    <exclude>META-INF/cip-version.properties</exclude>
                 </excludes>
             </resource>
         </resources>
@@ -87,6 +87,9 @@
                             <Driver-Class>com.salesforce.commerce.intelligence.jdbc.client.CIPDriver</Driver-Class>
                         </manifestEntries>
                     </archive>
+                    <excludes>
+                        <exclude>logback.xml</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -110,6 +113,12 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.salesforce.commerce.intelligence.jdbc.client:cip-client-dataconnector</artifact>
+                                    <excludes>
+                                        <exclude>logback.xml</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
