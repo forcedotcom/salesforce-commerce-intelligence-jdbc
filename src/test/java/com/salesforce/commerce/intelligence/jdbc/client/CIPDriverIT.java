@@ -1,6 +1,7 @@
 package com.salesforce.commerce.intelligence.jdbc.client;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -56,7 +57,7 @@ public class CIPDriverIT {
     }
 
     @Test
-    public void testCaseSensitive_shouldFailDueToCaseMismatch()
+    public void testCaseInsensitive_shouldSucceedWithUpperCaseColumn() throws Exception
     {
         Properties properties = new Properties();
         properties.put( "ssl",
@@ -66,22 +67,16 @@ public class CIPDriverIT {
         properties.put( "amOauthHost", "https://account-pod5.demandware.net" );
         // properties.put( "enableLogging", "true" );
 
-        SQLException exception = assertThrows( SQLException.class, () -> {
-            Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
+        Class.forName( "com.salesforce.commerce.intelligence.jdbc.client.CIPDriver" );
 
-            try (Connection conn = DriverManager.getConnection(
-                            "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd",
-                            properties ); Statement statement = conn.createStatement())
-            {
-
-                // This should fail if "DAY_ID" does not match the actual case in the schema
-                statement.executeQuery( "SELECT DAY_ID FROM ccdw_dim_date LIMIT 5" );
-            }
-        } );
-
-        assertTrue( "Expected error message to mention DAY_ID or column case issue",
-                        exception.getMessage().toLowerCase().contains( "day_id" ) || exception.getMessage()
-                                        .toLowerCase().contains( "column" ) );
+        try (Connection conn = DriverManager.getConnection(
+                        "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd",
+                        properties ); Statement statement = conn.createStatement())
+        {
+            // Backend is now case-insensitive; uppercase column reference should succeed
+            ResultSet resultSet = statement.executeQuery( "SELECT DAY_ID FROM ccdw_dim_date LIMIT 5" );
+            assertNotNull( "ResultSet should not be null", resultSet );
+        }
     }
 
     @Test
