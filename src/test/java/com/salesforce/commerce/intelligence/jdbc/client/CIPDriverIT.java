@@ -196,11 +196,13 @@ public class CIPDriverIT {
             statement.executeQuery("INVALID QUERY SYNTAX");
         });
 
-        // Verify the error message contains both status code and response body
-        assertTrue("Error message should contain status code", 
+        // Verify the error message contains the status code and response body
+        assertTrue("Error message should contain status code and query context",
+            exceptionWithBody.getMessage().contains("Error while executing SQL \"INVALID QUERY SYNTAX\""));
+        assertTrue("Error message should contain HTTP 400 status",
             exceptionWithBody.getMessage().contains("HTTP request failed with status code 400: Bad Request"));
-        assertTrue("Error message should contain response body", 
-            exceptionWithBody.getMessage().contains("Caused by: java.sql.SQLException: Error while executing SQL \"INVALID QUERY SYNTAX\""));
+        assertTrue("Error message should contain parse failure detail",
+            exceptionWithBody.getMessage().contains("parse failed"));
  
     }
 }
