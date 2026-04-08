@@ -56,16 +56,66 @@ You can override the fetch size using the `fetchSize` connection property, but v
 
 ## Logging
 
-This driver uses SLF4J for logging. By default, only errors are logged. To customize logging:
+This driver uses SLF4J with Logback. The shaded JAR does **not** ship a `logback.xml` — logging is controlled entirely by the host application (DBeaver, your Java app, etc.). By default, if no `logback.xml` is present on the classpath, only `ERROR`-level messages are printed to the console.
 
-- Add your own `logback.xml` to your application's classpath.
-- Example to enable debug logging for HTTP client internals:
-  ```xml
-  <logger name="org.apache.hc.client5.http.impl.classic" level="DEBUG"/>
-  ```
-- For more information, see the [Logback documentation](https://logback.qos.ch/manual/configuration.html).
+### Logger Names
 
-### Example: Enable File Logging
+| Logger | What it covers |
+|--------|----------------|
+| `com.salesforce.commerce.intelligence` | All CIP driver internals (auth, request handling, versioning) |
+| `org.apache.hc.client5.http.impl.classic` | HTTP request/response details |
+
+### Enable Logging in a Java Application
+
+Add a `logback.xml` to your application's classpath (e.g. `src/main/resources/logback.xml`):
+
+```xml
+<configuration>
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- CIP driver logs -->
+    <logger name="com.salesforce.commerce.intelligence" level="DEBUG"/>
+    <!-- Optional: HTTP client internals -->
+    <logger name="org.apache.hc.client5.http.impl.classic" level="DEBUG"/>
+
+    <root level="ERROR">
+        <appender-ref ref="Console"/>
+    </root>
+</configuration>
+```
+
+### Enable Logging in DBeaver
+
+DBeaver manages its own Logback configuration. To enable CIP driver debug logging:
+
+1. Locate your DBeaver workspace directory (default: `~/.dbeaver-data/` on macOS/Linux, `%APPDATA%\DBeaverData\` on Windows).
+2. Create or edit `logback.xml` in that directory and add the CIP logger:
+   ```xml
+   <configuration>
+       <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+           <encoder>
+               <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+           </encoder>
+       </appender>
+
+       <!-- CIP driver logs -->
+       <logger name="com.salesforce.commerce.intelligence" level="DEBUG"/>
+
+       <root level="ERROR">
+           <appender-ref ref="Console"/>
+       </root>
+   </configuration>
+   ```
+3. Restart DBeaver for the configuration to take effect.
+
+### Enable File Logging
+
+To also write logs to a file, add a `RollingFileAppender`:
+
 ```xml
 <configuration>
     <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
@@ -74,9 +124,9 @@ This driver uses SLF4J for logging. By default, only errors are logged. To custo
         </encoder>
     </appender>
     <appender name="File" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/app.log</file>
+        <file>logs/cip-driver.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/app-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>logs/cip-driver-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>10MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -85,13 +135,17 @@ This driver uses SLF4J for logging. By default, only errors are logged. To custo
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+
+    <logger name="com.salesforce.commerce.intelligence" level="DEBUG"/>
+
     <root level="ERROR">
         <appender-ref ref="Console"/>
         <appender-ref ref="File"/>
     </root>
 </configuration>
 ```
-**Note:** Ensure the `logs/` directory exists and is writable, or change the `<file>` path as needed.
+
+**Note:** Ensure the `logs/` directory exists and is writable, or update the `<file>` path as needed.
 
 ## Troubleshooting
 - **Connection issues:** Double-check your JDBC URL, username, and password.
