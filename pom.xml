@@ -53,14 +53,14 @@
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
                 <includes>
-                    <include>version.properties</include>
+                    <include>META-INF/cip-version.properties</include>
                 </includes>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
                 <excludes>
-                    <exclude>version.properties</exclude>
+                    <exclude>META-INF/cip-version.properties</exclude>
                 </excludes>
             </resource>
         </resources>
