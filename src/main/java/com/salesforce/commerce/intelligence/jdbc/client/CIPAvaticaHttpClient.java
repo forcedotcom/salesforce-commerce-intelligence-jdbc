@@ -114,7 +114,7 @@ public class CIPAvaticaHttpClient
     protected HttpClientContext context;
 
     private static String loadClientVersion() {
-        try (java.io.InputStream is = CIPAvaticaHttpClient.class.getClassLoader().getResourceAsStream("version.properties")) {
+        try (java.io.InputStream is = CIPAvaticaHttpClient.class.getClassLoader().getResourceAsStream("META-INF/version.properties")) {
             java.util.Properties props = new java.util.Properties();
             if (is != null) {
                 props.load(is);
