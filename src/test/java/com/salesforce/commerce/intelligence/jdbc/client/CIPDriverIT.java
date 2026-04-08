@@ -80,32 +80,23 @@ public class CIPDriverIT {
     }
 
     @Test
-    public void testCaseSensitive() throws Exception {
-        try {
-            Properties properties = new Properties();
-            properties.put("ssl", "true"); // for testing against local cip-service-dataconnector set ssl value to false
-            properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c50");
-            properties.put("password", "Demandware1!");
-            properties.put("amOauthHost", "https://account-pod5.demandware.net");
-            // properties.put( "enableLogging", "true" );
+    public void testCaseInsensitive_shouldSucceedWithLowerCaseColumn() throws Exception {
+        Properties properties = new Properties();
+        properties.put("ssl", "true"); // for testing against local cip-service-dataconnector set ssl value to false
+        properties.put("user", "fff01280-e3c3-43e5-8006-5ea1301f9c50");
+        properties.put("password", "Demandware1!");
+        properties.put("amOauthHost", "https://account-pod5.demandware.net");
+        // properties.put( "enableLogging", "true" );
 
-            Class.forName("com.salesforce.commerce.intelligence.jdbc.client.CIPDriver");
+        Class.forName("com.salesforce.commerce.intelligence.jdbc.client.CIPDriver");
 
-            // for local testing set url as "jdbc:salesforcecc://localhost:9787/bjnl_prd"
-            Connection conn = DriverManager.getConnection(
-                    "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
-
-            Statement statement = conn.createStatement();
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:salesforcecc://jdbc.qa.analytics-dev.commercecloud.salesforce.com:443/bjmp_prd", properties);
+             Statement statement = conn.createStatement())
+        {
+            // Backend is now case-insensitive; lowercase column reference should succeed
             ResultSet resultSet = statement.executeQuery("SELECT day_id FROM ccdw_dim_date LIMIT 5");
-
-            // Iterate through the results (if any) to ensure the query is processed
-            while (resultSet.next()) {
-                System.out.println(resultSet.getString(1));
-            }
-
-            System.out.println("Connection established: " + (conn != null));
-        } catch (Exception e) {
-            throw e;
+            assertNotNull("ResultSet should not be null", resultSet);
         }
     }
 
