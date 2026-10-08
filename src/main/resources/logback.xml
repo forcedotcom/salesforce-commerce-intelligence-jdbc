@@ -1,0 +1,17 @@
+<configuration>
+    <!-- Console Appender -->
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+      To enable debug logging for HTTP client internals, add:
+      <logger name="org.apache.hc.client5.http.impl.classic" level="DEBUG"/>
+    -->
+
+    <root level="ERROR">
+        <appender-ref ref="Console"/>
+    </root>
+</configuration> 
